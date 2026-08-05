@@ -1,0 +1,1220 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---------------------------------------------------------------------
+     SITE PALETTE (light, editorial, premium)
+     The marketing site is light and airy; the console stays dark (below),
+     framed as a "cockpit" panel inside the light chrome.
+     --------------------------------------------------------------------- */
+  --color-ink: #0B0B0F;
+  --color-ink-2: #35353F;
+  --color-ink-3: #6B6B78;
+  --color-ink-4: #9A9AA6;
+
+  --color-paper: #FBFAF8;
+  --color-paper-2: #FFFFFF;
+  --color-paper-3: #F3F2EF;
+
+  --color-line: #E7E5E0;
+  --color-line-2: #D6D3CC;
+
+  /* Brand: Base-blue -> violet -> settlement green */
+  --color-brand: #1D4ED8;
+  --color-brand-2: #4F46E5;
+  --color-brand-3: #7C3AED;
+  --color-signal: #059669;
+  --color-signal-2: #10B981;
+  --color-ember: #EA580C;
+  --color-ember-2: #F97316;
+
+  /* ---------------------------------------------------------------------
+     CONSOLE PALETTE (dark cockpit) — used by /console only
+     Originally a neutral green-black "monitoring" grade. Now a lifted ember-brown
+     ramp rather than a near-black one: at near-black luminance the warm hue simply
+     isn't perceivable, so the panels read as generic black boxes no matter what
+     hue they carry. Raising each step well clear of black is what actually makes
+     them look like part of the molten theme. Text tokens are lifted to match, so
+     every pairing here still clears WCAG AA.
+     --------------------------------------------------------------------- */
+  --color-obs-bg: #1B1008;
+  --color-obs-surface-1: #261709;
+  --color-obs-surface-2: #33200D;
+  --color-obs-surface-3: #402A12;
+
+  --color-obs-text-1: #F7F2EA;
+  --color-obs-text-2: #C4B49C;
+  --color-obs-text-muted: #9C8A70;
+
+  --color-obs-border: #4A3218;
+  --color-obs-border-strong: #63451F;
+
+  --color-obs-green-primary: #22C55E;
+  --color-obs-green-bright: #4ADE80;
+  --color-obs-green-dark: #16A34A;
+  --color-obs-green-bg: #102A18;
+  --color-obs-green-border: #245C35;
+
+  --color-obs-error: #DC2626;
+  --color-obs-warning: #D97706;
+
+  --font-mono: "Geist Mono", "JetBrains Mono", "Fira Code", monospace;
+  --font-sans: "Geist", "Inter", system-ui, sans-serif;
+  --font-display: "Fraunces", "Plus Jakarta Sans", Georgia, serif;
+}
+
+/* ---------------------------------------------------------------------------
+   THEME TOKENS
+   Light is the default. Dark is opt-in via data-theme="dark" on <html> (set by
+   an inline script in index.html before paint, so there's no flash).
+
+   Semantic "tone" triples (bg / text / border) exist so badges, callouts and
+   status chips can be written once and stay legible in both themes - the
+   earlier hardcoded pastel hexes went unreadable the moment the page went dark.
+   --------------------------------------------------------------------------- */
+:root {
+  --color-ink-hover: #22222c;
+  /* Lifted ember-brown, not a near-black, so the code/terminal panels sprinkled
+     through the marketing pages (HeroPaymentCard, PipelineDiagram, code blocks) read
+     as the same material as the ember wash around them. Sitting on light paper these
+     stay fully opaque - the contrast between panel and page is the point. */
+  --cockpit-bg: #1B1008;
+  --nav-surface: rgba(255, 255, 255, 0.92);
+  --nav-surface-idle: rgba(255, 255, 255, 0.7);
+  --grid-line: rgba(11, 11, 15, 0.045);
+  --blob-opacity: 1;
+  --card-bg: var(--color-paper-2);
+  --card-blur: 0px;
+
+  /* Ambient wash: three slowly drifting colour fields painted behind the whole
+     document (see AmbientBackdrop). Tuned per theme so the same component reads as
+     "warm paper" in light and "lit from behind" in dark. */
+  /* Softened from the earlier pass. The dominant warmth is unchanged in character, just
+     less saturated so it reads as light falling on paper rather than as an orange field;
+     the flanks have most of their indigo taken out, leaving a cool *grey* that balances
+     the warm centre without introducing a second accent hue. */
+  --amb-1: rgba(247, 146, 74, 0.40);
+  --amb-2: rgba(154, 158, 186, 0.26);
+  --amb-3: rgba(178, 182, 200, 0.20);
+  --amb-strength: 1;
+  --amb-blur: 150px;
+
+  /* Paper. A near-invisible fractal grain over everything, so large flat areas of ivory
+     have the tooth of stock rather than the flatness of an sRGB fill. */
+  --grain-opacity: 0.032;
+
+  /* One shadow language for the whole site: a tight contact shadow plus a wide soft one,
+     both warm-tinted rather than neutral grey, which is what keeps them sitting on ivory
+     instead of looking like a grey haze. */
+  --shadow-card:
+    0 1px 2px rgba(72, 52, 34, 0.04),
+    0 8px 24px -12px rgba(72, 52, 34, 0.07);
+  --shadow-card-hover:
+    0 2px 4px rgba(72, 52, 34, 0.05),
+    0 16px 40px -16px rgba(72, 52, 34, 0.12),
+    0 32px 72px -32px rgba(72, 52, 34, 0.10);
+  --shadow-btn:
+    0 1px 2px rgba(72, 52, 34, 0.10),
+    0 6px 16px -8px rgba(72, 52, 34, 0.18);
+  --shadow-btn-hover:
+    0 2px 4px rgba(72, 52, 34, 0.12),
+    0 12px 28px -10px rgba(72, 52, 34, 0.24);
+  --shadow-nav:
+    0 1px 2px rgba(72, 52, 34, 0.04),
+    0 12px 40px -16px rgba(72, 52, 34, 0.14);
+  /* A faint, section-local echo of --amb-1 (see .section-band below). Fixing the
+     backdrop's under-lit middle sections needs colour that travels with the document,
+     not just the viewport-locked wash. */
+  --band-tint: rgba(249, 115, 22, 0.10);
+
+  /* Console launch arc: a large ring of light whose top edge arcs up behind the
+     prompt box. --arc-rim is the thin bright edge, --arc-halo the diffuse bloom
+     above it, --arc-core the fill inside the dome. Light mode keeps the whole
+     thing well under half strength so it reads as a tinted glow on paper rather
+     than a neon shape. */
+  --arc-rim: rgba(109, 40, 217, 0.62);
+  --arc-halo: rgba(99, 102, 241, 0.42);
+  --arc-core: rgba(37, 99, 235, 0.22);
+  --arc-trace: rgba(99, 102, 241, 0.9);
+  --arc-strength: 0.95;
+  --arc-lift: rgba(79, 70, 229, 0.22);
+  --composer-bg: rgba(255, 255, 255, 0.72);
+
+  /* Launch deck: the perspective floor, the HUD chrome on the prompt panel, and the
+     segmented budget meter. Light keeps everything in the brand blue so it reads as a
+     technical drawing on paper rather than a neon arcade. */
+  --deck-line: rgba(29, 78, 216, 0.20);
+  --deck-bracket: rgba(29, 78, 216, 0.55);
+  --deck-scan: rgba(37, 99, 235, 0.22);
+  /* The big rising dome at the bottom of the console. On paper it has to be a tinted
+     shape rather than a white one, or it would be invisible. */
+  --dome-core: rgba(79, 70, 229, 0.42);
+  --dome-glow: rgba(124, 58, 237, 0.20);
+
+  /* ---- Dark panels that appear on BOTH themes ----
+     The closing CTA, the hero payment terminal and the nav's featured card are dark
+     surfaces regardless of theme, so their colours were hardcoded inline. Tokenising
+     them is what lets the dark theme give them an obsidian treatment without touching
+     how they look in light - these values are exactly what light renders today. */
+  --cta-bg: linear-gradient(155deg, #0A0503 0%, #431407 48%, #7C2D12 100%);
+  --cta-glow-1: rgba(217, 119, 6, 0.85);
+  --cta-glow-2: rgba(245, 158, 11, 0.7);
+  --cta-glow-3: rgba(234, 88, 12, 0.65);
+  --cta-veil: radial-gradient(80% 70% at 50% 50%, rgba(10, 5, 3, 0.55), rgba(10, 5, 3, 0.15));
+  --cta-glow-1-opacity: 0.7;
+  --cta-glow-2-opacity: 0.65;
+  --cta-glow-3-opacity: 0.55;
+
+  --hero-card-frame: linear-gradient(150deg, rgba(217, 119, 6, 0.55), rgba(234, 88, 12, 0.42) 48%, rgba(5, 150, 105, 0.4));
+  --hero-card-glow-1: #D97706;
+  --hero-card-glow-2: #059669;
+  --hero-card-glow-opacity: 0.4;
+
+  --nav-featured-bg: linear-gradient(158deg, #180A06 0%, #7C2D12 48%, #EA580C 118%);
+  --narration-glow: #D97706;
+  --logo-tile: linear-gradient(140deg, #0052FF 0%, #2C4BE8 52%, #4338CA 100%);
+  /* How strongly a pipeline stage's accent colour blooms behind its illustration. */
+  --stage-glow-opacity: 0.5;
+
+  --tone-signal-bg: #ECFDF5;
+  --tone-signal-text: #047857;
+  --tone-signal-border: #A7F3D0;
+
+  --tone-brand-bg: #EEF2FF;
+  --tone-brand-text: #4338CA;
+  --tone-brand-text-strong: #3730A3;
+  --tone-brand-border: #C7D2FE;
+
+  --tone-warn-bg: #FFF7ED;
+  --tone-warn-text: #C2410C;
+  --tone-warn-border: #FED7AA;
+
+  --tone-amber-bg: #FFFBEB;
+  --tone-amber-text: #B45309;
+  --tone-amber-border: #FDE68A;
+
+  --tone-danger-bg: #FEF2F2;
+  --tone-danger-text: #DC2626;
+  --tone-danger-text-strong: #B91C1C;
+  --tone-danger-border: #FECACA;
+
+  --tone-violet-bg: #F5F3FF;
+  --tone-violet-text: #7C3AED;
+}
+
+/* ---------------------------------------------------------------------------
+   DARK THEME — "obsidian"
+
+   The design target here is a machined, almost monochrome instrument: matte black
+   surfaces, glass panels, architectural lighting, and amber used only where the eye
+   genuinely needs to go. The previous pass was a warm ember wash across every
+   surface; it read as a *colour theme* rather than as a material, which is exactly
+   what makes an interface feel cheap at this size.
+
+   Two rules hold the whole thing together:
+     1. Colour is rationed. Black, charcoal, white, amber. Green/red survive only as
+        status semantics (settled, online, failed), never as decoration.
+     2. Depth comes from light and shadow, not from hue. Surfaces step up in
+        luminance; borders almost vanish until you interact with them.
+
+   Everything below is scoped to [data-theme="dark"], so the light theme is untouched.
+   --------------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  /* Neutral ink. The warm-brown foregrounds of the previous pass tinted every word on
+     the page; on a monochrome surface that reads as a colour cast, not as warmth. */
+  --color-ink: #F5F5F5;
+  --color-ink-2: #A8A8A8;
+  --color-ink-3: #7A7A7A;
+  --color-ink-4: #5A5A5A;
+
+  /* Obsidian ramp. Each step is a real luminance change rather than a hue change, so
+     elevation is legible without any surface needing a border to prove it exists. */
+  --color-paper: #070707;
+  --color-paper-2: #0B0B0B;
+  --color-paper-3: #111111;
+  --color-paper-4: #151515;
+
+  /* Borders sit just above the noise floor and only assert themselves on hover. */
+  --color-line: rgba(255, 255, 255, 0.05);
+  --color-line-2: rgba(255, 255, 255, 0.10);
+  --color-line-hover: rgba(245, 166, 35, 0.18);
+
+  --color-ink-hover: #E8E8E8;
+
+  /* Layered ambient shadows - a contact shadow plus a wide soft one, the way a real
+     object sits on a surface. Used by .card-hover and the button lifts. */
+  --shadow-ambient:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 8px 24px -8px rgba(0, 0, 0, 0.7),
+    0 24px 64px -24px rgba(0, 0, 0, 0.8);
+  --shadow-lift:
+    0 2px 4px rgba(0, 0, 0, 0.6),
+    0 16px 40px -12px rgba(0, 0, 0, 0.75),
+    0 40px 90px -32px rgba(0, 0, 0, 0.85);
+  /* 1px of light along the top edge - the single cue that sells "glass" over "flat box" */
+  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --cockpit-bg: rgba(9, 9, 9, 0.88);
+  --color-obs-bg: rgba(11, 11, 11, 0.86);
+  --color-obs-surface-1: rgba(17, 17, 17, 0.88);
+  --color-obs-surface-2: rgba(21, 21, 21, 0.90);
+  --color-obs-surface-3: rgba(26, 26, 26, 0.92);
+  --color-obs-text-1: #F5F5F5;
+  --color-obs-text-2: #A8A8A8;
+  --color-obs-text-muted: #6E6E6E;
+  --color-obs-border: rgba(255, 255, 255, 0.06);
+  --color-obs-border-strong: rgba(255, 255, 255, 0.12);
+
+  --nav-surface: rgba(15, 15, 15, 0.55);
+  --nav-surface-idle: rgba(12, 12, 12, 0.38);
+  --nav-blur: 30px;
+  --grid-line: rgba(255, 255, 255, 0.028);
+  --blob-opacity: 0.85;
+
+  /* Obsidian glass: a near-opaque charcoal fill, a heavy blur so whatever passes
+     behind it stays a suggestion, and a hairline top highlight. */
+  --card-bg: rgba(17, 17, 17, 0.82);
+  --card-blur: 24px;
+
+  /* Console deck. The dome is now a single architectural light source - a soft white
+     rim, not a molten one - and the floor grid is barely-there white rather than
+     glowing amber. Amber survives only as the trace that follows the prompt border
+     on focus, where it is doing real work. */
+  --arc-rim: rgba(255, 255, 255, 0.55);
+  --arc-halo: rgba(255, 255, 255, 0.10);
+  --arc-core: rgba(255, 255, 255, 0.03);
+  --arc-trace: rgba(245, 166, 35, 0.9);
+  --arc-strength: 1;
+  --arc-lift: rgba(0, 0, 0, 0.75);
+  --composer-bg: rgba(17, 17, 17, 0.82);
+
+  --deck-line: rgba(255, 255, 255, 0.045);
+  --deck-bracket: rgba(245, 166, 35, 0.5);
+  --deck-scan: rgba(255, 255, 255, 0.05);
+  --dome-core: rgba(255, 255, 255, 0.62);
+  --dome-glow: rgba(255, 255, 255, 0.07);
+
+  /* Status tones. Backgrounds are neutral charcoal in every case - only the glyph and
+     the label carry colour, so a page full of chips reads as monochrome with a few
+     precise signals rather than as a set of coloured pills. */
+  --tone-signal-bg: rgba(255, 255, 255, 0.04);
+  --tone-signal-text: #4ADE80;
+  --tone-signal-border: rgba(74, 222, 128, 0.16);
+
+  /* "brand" is the accent tone: selected tabs, active nav, the provenance stamp. This
+     is one of the few places amber is allowed to appear. */
+  --tone-brand-bg: rgba(245, 166, 35, 0.07);
+  --tone-brand-text: #F5A623;
+  --tone-brand-text-strong: #F7B84E;
+  --tone-brand-border: rgba(245, 166, 35, 0.18);
+
+  --tone-warn-bg: rgba(255, 255, 255, 0.04);
+  --tone-warn-text: #E0A458;
+  --tone-warn-border: rgba(224, 164, 88, 0.16);
+
+  --tone-amber-bg: rgba(245, 166, 35, 0.07);
+  --tone-amber-text: #F5A623;
+  --tone-amber-border: rgba(245, 166, 35, 0.18);
+
+  --tone-danger-bg: rgba(255, 255, 255, 0.04);
+  --tone-danger-text: #E5484D;
+  --tone-danger-text-strong: #F26D70;
+  --tone-danger-border: rgba(229, 72, 77, 0.18);
+
+  /* "violet" is decorative only (nav dropdown tints, one feature card) - neutral here. */
+  --tone-violet-bg: rgba(255, 255, 255, 0.04);
+  --tone-violet-text: #C4C4C4;
+
+  --color-brand: #F5A623;
+  --color-brand-2: #F5A623;
+  --color-brand-3: #D98A0B;
+  --color-signal: #34D399;
+  --color-ember: #F5A623;
+
+  /* Atmosphere, not decoration. One soft warm light sits behind the hero and the two
+     flanks are pure white at a whisper - together they read as a room that happens to
+     be lit, not as a gradient. --amb-strength does the heavy lifting: the individual
+     fields stay reasonably saturated so the falloff keeps its shape, then the whole
+     layer is multiplied down to well under 10% so you register it as depth rather
+     than as colour. */
+  --amb-1: rgba(245, 166, 35, 0.55);
+  --amb-2: rgba(255, 255, 255, 0.05);
+  --amb-3: rgba(255, 255, 255, 0.035);
+  --band-tint: rgba(245, 166, 35, 0.025);
+  --amb-strength: 0.16;
+  --amb-blur: 170px;
+  /* Grain reads much louder on near-black, so it comes down considerably here. */
+  --grain-opacity: 0.018;
+
+  --shadow-card: var(--shadow-ambient);
+  --shadow-card-hover: var(--shadow-lift);
+  --shadow-btn: var(--shadow-ambient);
+  --shadow-btn-hover: var(--shadow-lift);
+  --shadow-nav:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 16px 48px -20px rgba(0, 0, 0, 0.75);
+
+  /* The always-dark panels, rebuilt as obsidian. Each keeps exactly one warm accent -
+     enough for the surface to feel lit rather than printed - and everything else drops
+     to white at a few percent. */
+  --cta-bg: linear-gradient(155deg, #090909 0%, #101010 48%, #161616 100%);
+  --cta-glow-1: rgba(245, 166, 35, 0.42);
+  --cta-glow-2: rgba(255, 255, 255, 0.07);
+  --cta-glow-3: rgba(255, 255, 255, 0.05);
+  --cta-veil: radial-gradient(80% 70% at 50% 50%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.1));
+  --cta-glow-1-opacity: 0.5;
+  --cta-glow-2-opacity: 0.46;
+  --cta-glow-3-opacity: 0.4;
+
+  --hero-card-frame: linear-gradient(150deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035) 48%, rgba(245, 166, 35, 0.16));
+  --hero-card-glow-1: rgba(245, 166, 35, 0.5);
+  --hero-card-glow-2: rgba(255, 255, 255, 0.07);
+  --hero-card-glow-opacity: 0.32;
+
+  --nav-featured-bg: linear-gradient(158deg, #0C0C0C 0%, #141414 48%, #1E1A12 118%);
+  --narration-glow: rgba(255, 255, 255, 0.10);
+  --logo-tile: linear-gradient(140deg, #2A2A2A 0%, #1C1C1C 52%, #141414 100%);
+  --stage-glow-opacity: 0.16;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-sans antialiased min-h-screen overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: var(--font-display);
+    /* Fraunces ships decorative SOFT and WONK axes that default on. Both are dialled
+       out here - at headline size they read as novelty rather than as the restrained
+       masthead serif this needs. opsz is left automatic so large sizes pick up the
+       high-contrast display cut and small ones stay sturdy. */
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 0, 'WONK' 0;
+    @apply font-bold tracking-tight text-[var(--color-ink)];
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-brand) 22%, transparent);
+  }
+
+  /* Film grain. Fractal noise rendered once by the SVG filter and tiled, so it costs one
+     composited layer and no images. It sits above the ambient wash but below all content,
+     which is what stops big flat fields of ivory reading as a plain fill - you don't see
+     it, you just stop noticing the flatness. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -5;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+}
+
+@layer utilities {
+  /* ---------- site primitives ---------- */
+  .site-container {
+    @apply max-w-[1180px] mx-auto px-6;
+  }
+
+  .card {
+    @apply border border-[var(--color-line)] rounded-2xl;
+    background: var(--card-bg);
+    backdrop-filter: blur(var(--card-blur));
+    box-shadow: var(--shadow-card);
+  }
+
+  /* One motion curve for every interactive surface on the site. Cards, buttons and chips
+     all lift on the same easing and duration, which is most of what makes a set of
+     unrelated components feel like one system. */
+  .card-hover {
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.35s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-line-2);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Extremely subtle elevation hierarchy across a grid of otherwise identical cards.
+     Every third card sits a hair warmer and a hair higher than its neighbours - far
+     below the threshold you'd consciously notice, but enough that a six-card grid stops
+     reading as one flat repeated tile. */
+  .card-grid > *:nth-child(3n + 2) .card {
+    background:
+      linear-gradient(180deg, rgba(255, 247, 237, 0.5), transparent 42%),
+      var(--card-bg);
+  }
+
+  .card-grid > *:nth-child(3n) .card {
+    box-shadow: var(--shadow-card), 0 18px 42px -28px rgba(72, 52, 34, 0.10);
+  }
+
+  /* The "Learn more" affordance on a card: an underline that draws itself in from the
+     left on hover rather than simply appearing. */
+  .link-underline {
+    position: relative;
+  }
+
+  .link-underline::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1px;
+    width: 100%;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .group:hover .link-underline::after {
+    transform: scaleX(1);
+  }
+
+  /* Editorial divider carrying the orchestration motif: a hairline that fades in from
+     nothing at both ends with a single node sitting on it, the way a task sits on a
+     dependency edge. */
+  .rule-node {
+    position: relative;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--color-line-2) 22%,
+      var(--color-line-2) 78%,
+      transparent
+    );
+  }
+
+  .rule-node::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: var(--color-paper);
+    border: 1px solid var(--color-line-2);
+  }
+
+  .pill {
+    @apply rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)];
+  }
+
+  /* Command chip: the mono-labelled pill used for stage/protocol tags (Planner, Auction,
+     x402, USDC…). One shared shape so every occurrence across the site reads as the same
+     vocabulary rather than a one-off. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-1.5 text-[11.5px] font-medium text-[var(--color-ink-2)];
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.25s ease, color 0.25s ease, background-color 0.25s ease;
+  }
+
+  .chip-live::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 currentColor;
+  }
+
+  .chip-active {
+    border-color: var(--tone-amber-border);
+    color: var(--tone-amber-text);
+    background: var(--tone-amber-bg);
+  }
+
+  /* Blinking terminal cursor appended to code/console panels, so they read as a live
+     shell rather than a static screenshot. */
+  .cursor-blink {
+    display: inline-block;
+    width: 0.55em;
+    margin-left: 2px;
+    background: currentColor;
+    animation: cursor-blink 1.1s step-end infinite;
+    vertical-align: -0.1em;
+  }
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cursor-blink { animation: none; opacity: 0.6; }
+  }
+
+  /* Buttons are physical objects: they rest on a contact shadow, lift on hover, and are
+     pressed back down on click. Same easing as .card-hover so the whole page moves with
+     one hand. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-ink)] text-[var(--color-paper)]
+           px-6 py-3 text-[14px] font-semibold hover:bg-[var(--color-ink-hover)];
+    box-shadow: var(--shadow-btn);
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.25s ease;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1.5px);
+    box-shadow: var(--shadow-btn-hover);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0) scale(0.985);
+    box-shadow: var(--shadow-btn);
+    transition-duration: 0.09s;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-paper-2)]
+           text-[var(--color-ink)] border border-[var(--color-line-2)] px-6 py-3 text-[14px] font-semibold
+           hover:bg-[var(--color-paper-3)] hover:border-[var(--color-ink-4)];
+    box-shadow: var(--shadow-card);
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.25s ease,
+      border-color 0.25s ease;
+  }
+
+  .btn-secondary:hover {
+    transform: translateY(-1.5px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .btn-secondary:active {
+    transform: translateY(0) scale(0.985);
+    box-shadow: var(--shadow-card);
+    transition-duration: 0.09s;
+  }
+
+  .eyebrow {
+    @apply text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-3)];
+  }
+
+  .lede {
+    @apply text-[17px] leading-[1.7] text-[var(--color-ink-2)];
+  }
+
+  .prose-body {
+    @apply text-[15px] leading-[1.75] text-[var(--color-ink-2)];
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tight amber -> ember, matching the molten wash the whole site now runs on. This used
+     to be Base's brand blue, which read as a leftover from an earlier palette once the
+     ambient wash and console went warm - a cool accent sitting on a warm page. Deliberately
+     stays in one hue family, same reasoning as before: a wider hue swing reads as a
+     rainbow, not a brand. */
+  .gradient-text {
+    background: linear-gradient(96deg, #D97706 0%, #EA580C 42%, #F59E0B 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Hero headline only. Two independent layers so the colour drift and the gloss sweep
+     can run at their own tempos: the element itself carries the slowly drifting colour
+     gradient, and ::after re-renders the same glyphs (via data-text) as a white
+     highlight that sweeps across every ~4s. Both are clipped to the text, so nothing
+     ever paints outside the letterforms. */
+  .hero-gradient-text {
+    position: relative;
+    display: inline-block;
+    /* The headline runs a very tight line-height, so the inline-block's box ends above
+       the font's descender - and since the colour lives in a background clipped to the
+       glyphs, anything below the box (the tails of "y") simply never gets painted.
+       Pad the box down past the descender, then pull the same amount back off the
+       margin so layout is untouched. */
+    padding-bottom: 0.2em;
+    margin-bottom: -0.2em;
+    /* Loops through the same amber -> ember -> gold family as the rest of the molten
+       theme (the ambient wash, the console dome, .gradient-text above) instead of the
+       old blue -> indigo -> violet -> cyan run, which was the single coldest thing left
+       on the page once everything else went warm. */
+    background-image: linear-gradient(
+      100deg,
+      #d97706 0%,
+      #f59e0b 25%,
+      #fbbf24 50%,
+      #ea580c 75%,
+      #d97706 100%
+    );
+    background-size: 300% 100%;
+    background-position: 0% 50%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* alpha comes from the glyphs, so this reads as a soft glow around the letters */
+    filter: drop-shadow(0 0 14px rgba(217, 119, 6, 0.28));
+    animation: hero-gradient-drift 9s ease-in-out infinite;
+    will-change: background-position;
+  }
+
+  .hero-gradient-text::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      105deg,
+      transparent 42%,
+      rgba(255, 255, 255, 0.9) 50%,
+      transparent 58%
+    );
+    background-size: 260% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    opacity: 0.18;
+    filter: blur(0.4px);
+    pointer-events: none;
+    animation: hero-shimmer-sweep 3.8s ease-in-out infinite;
+    will-change: background-position;
+  }
+
+  /* Alternating "band" sections. These used to be a flat tint plus a 1px top border,
+     which cut a hard horizontal seam straight through the ambient wash the moment you
+     scrolled past one. Feathering the fill in and out over the first and last 14% (and
+     dropping the border entirely) lets the band lighten the strip without ever announcing
+     where it starts. */
+  .section-band {
+    /* The fixed AmbientBackdrop only really shows colour near the top of whatever
+       screen height you're currently looking at (see AmbientBackdrop.tsx) - so a
+       section sitting mid-scroll, mid-viewport, gets almost none of it. The radial
+       layer reasserts a faint top-of-section glow locally, so every band carries a
+       trace of the theme regardless of how far down the document - and, crucially,
+       regardless of where it happens to land in the viewport - it is. */
+    background:
+      radial-gradient(65% 140% at 50% -12%, var(--band-tint), transparent 70%),
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgb(from var(--color-paper-2) r g b / 0.5) 14%,
+        rgb(from var(--color-paper-2) r g b / 0.5) 86%,
+        transparent 100%
+      );
+  }
+
+  /* The floor of the launch deck. A flat grid tilted back about its top edge inside a
+     `perspective` wrapper, so the lines converge on a horizon instead of staying square.
+     Scrolling the background straight down then reads as the floor moving toward you. */
+  .deck-floor {
+    background-image:
+      linear-gradient(to right, var(--deck-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--deck-line) 1px, transparent 1px);
+    background-size: 72px 72px;
+    animation: deck-scroll 4.5s linear infinite;
+  }
+
+  /* A soft band travelling down the prompt panel. It's one element with a no-repeat
+     gradient, and the animation moves the background rather than the box, so nothing
+     reflows and the whole thing composites cheaply. */
+  .deck-scan {
+    background-image: linear-gradient(to bottom, transparent, var(--deck-scan) 50%, transparent);
+    background-size: 100% 88px;
+    background-repeat: no-repeat;
+    animation: deck-scan 4.2s ease-in-out infinite;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* The prompt box that sits at the apex of the console arc. Two things happen on
+     hover/focus: a light traces once around the border, and the shell lifts on a
+     coloured shadow borrowed from the arc itself, so the box and the glow behind it
+     read as one object. */
+  .arc-input {
+    position: relative;
+    isolation: isolate;
+    transition:
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.4s ease;
+  }
+
+  .arc-input:hover,
+  .arc-input:focus-within {
+    transform: translateY(-2px);
+    border-color: var(--color-line-2);
+    /* Deliberately no hard 1px ring here: a uniform coloured outline would sit at the
+       same brightness as the travelling highlight and swallow it. The lift is carried
+       by the soft bloom instead. */
+    box-shadow:
+      0 20px 64px -20px var(--arc-lift),
+      0 2px 10px -4px rgb(0 0 0 / 0.25);
+  }
+
+  /* 1px ring drawn as a conic gradient masked to the border box. The gradient only
+     lights ~90deg of the sweep, so what you see is a single highlight travelling
+     around the edge rather than a rotating rainbow. */
+  .arc-input::before {
+    content: '';
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--arc-angle),
+      transparent 0deg,
+      var(--arc-trace) 32deg,
+      transparent 84deg,
+      transparent 360deg
+    );
+    /* Widening the ring to 1.5px and blurring it a touch is what turns a hairline into
+       something that reads as light travelling along the edge. */
+    filter: blur(0.5px);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .arc-input:hover::before,
+  .arc-input:focus-within::before {
+    opacity: 1;
+    animation: arc-trace-spin 4.5s linear infinite;
+  }
+
+  /* ---------- console primitives (dark) ---------- */
+  .panel {
+    @apply bg-[var(--color-obs-surface-1)] border border-[var(--color-obs-border)] rounded-lg shadow-none;
+  }
+
+  .panel-nested {
+    @apply bg-[var(--color-obs-surface-2)] border border-[var(--color-obs-border)] rounded-md shadow-none;
+  }
+
+  .text-page-title {
+    @apply text-[22px] font-semibold leading-tight;
+  }
+
+  .text-section-title {
+    @apply text-[14px] font-semibold leading-tight;
+  }
+
+  .text-agent-name {
+    @apply text-[13px] font-semibold leading-tight;
+  }
+
+  .text-body {
+    @apply text-[13px] font-normal leading-relaxed text-[var(--color-obs-text-2)];
+  }
+
+  .text-metadata {
+    @apply text-[11px] font-medium leading-tight text-[var(--color-obs-text-muted)];
+  }
+
+  .text-code {
+    @apply text-[12px] font-mono leading-tight;
+  }
+
+  .font-mono-numbers {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ===========================================================================
+   DARK THEME MATERIALS
+
+   Everything from here to the end of this block is scoped to [data-theme="dark"].
+   These are material and lighting overrides on top of the shared component classes
+   above, so the light theme keeps its own (finalised) treatment untouched - none of
+   these rules can ever match in light mode.
+   =========================================================================== */
+
+/* Cards read as slabs of obsidian glass: a heavy blur, a hairline of light along the
+   top edge, and a layered ambient shadow so they sit *on* the page rather than being
+   drawn onto it. The border is almost invisible until you interact. */
+:root[data-theme="dark"] .card {
+  box-shadow: var(--shadow-card), var(--edge-highlight);
+}
+
+:root[data-theme="dark"] .card-hover:hover {
+  border-color: var(--color-line-hover);
+  box-shadow: var(--shadow-card-hover), var(--edge-highlight);
+}
+
+/* The light theme's warm top-wash and extra drop don't belong on obsidian - depth here
+   comes from the edge highlight instead. */
+:root[data-theme="dark"] .card-grid > *:nth-child(3n + 2) .card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 42%),
+    var(--card-bg);
+}
+
+:root[data-theme="dark"] .card-grid > *:nth-child(3n) .card {
+  box-shadow: var(--shadow-card), var(--edge-highlight), 0 22px 48px -30px rgba(0, 0, 0, 0.9);
+}
+
+/* Machined, not glowing. The shared rules already carry the lift and the shadow; dark
+   only adds a single hairline of amber reflected off the top edge - no halo, no bloom. */
+:root[data-theme="dark"] .btn-primary:hover {
+  box-shadow: var(--shadow-btn-hover), inset 0 1px 0 rgba(245, 166, 35, 0.35);
+}
+
+:root[data-theme="dark"] .btn-secondary {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:root[data-theme="dark"] .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: var(--color-line-hover);
+  box-shadow: var(--shadow-card-hover), var(--edge-highlight);
+}
+
+:root[data-theme="dark"] .pill {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: var(--edge-highlight);
+}
+
+/* Amber is rationed, and the headline is one of the few places it earns its keep. But
+   it is a single restrained sweep from warm white through amber and back - not the
+   four-stop colour run the warm pass used, which read as a gradient effect rather than
+   as light catching a letterform. */
+/* background-image, not the `background` shorthand: the shorthand resets background-clip
+   back to border-box, which unclips the gradient from the glyphs and paints it as a solid
+   rectangle over invisible (transparent-filled) text. */
+:root[data-theme="dark"] .gradient-text {
+  background-image: linear-gradient(96deg, #F5A623 0%, #F7C46C 55%, #F5A623 100%);
+}
+
+:root[data-theme="dark"] .hero-gradient-text {
+  background-image: linear-gradient(
+    100deg,
+    #E8E8E8 0%,
+    #F5A623 30%,
+    #F7C877 50%,
+    #F5A623 70%,
+    #E8E8E8 100%
+  );
+  /* A contact glow this soft reads as the letters being lit, not as neon. */
+  filter: drop-shadow(0 0 26px rgba(245, 166, 35, 0.14));
+}
+
+/* The section fill has to be far quieter here: at 0.5 alpha over a near-black page it
+   was a visible grey slab. A few percent is enough to separate the band. */
+:root[data-theme="dark"] .section-band {
+  background:
+    radial-gradient(65% 140% at 50% -12%, var(--band-tint), transparent 70%),
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(255, 255, 255, 0.014) 14%,
+      rgba(255, 255, 255, 0.014) 86%,
+      transparent 100%
+    );
+}
+
+/* Console panels get the same glass treatment as the marketing cards. */
+:root[data-theme="dark"] .panel {
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-ambient), var(--edge-highlight);
+}
+
+:root[data-theme="dark"] .panel-nested {
+  backdrop-filter: blur(12px);
+  box-shadow: var(--edge-highlight);
+}
+
+/* Typography carries the page. Fraunces at display size wants a tighter line and tracking
+   than the utility classes give it - they're tuned for a grotesk. Set outside @layer so it
+   beats the Tailwind arbitrary values, and scoped to the marketing hero alone: it's the one
+   headline with the horizontal room to take the extra size without rewrapping, so no other
+   section's layout moves. */
+@media (min-width: 640px) {
+  .site-hero-title {
+    font-size: 74px;
+    line-height: 0.98;
+    letter-spacing: -0.042em;
+  }
+
+  /* Dark runs a touch larger still - on near-black the same size reads optically smaller. */
+  :root[data-theme="dark"] .site-hero-title {
+    font-size: 78px;
+    line-height: 0.97;
+    letter-spacing: -0.045em;
+  }
+}
+
+/* Marquee for the live transaction ticker */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 46s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Hero headline: slow colour drift, and a gloss sweep that rests between passes. */
+@keyframes hero-gradient-drift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes hero-shimmer-sweep {
+  0% {
+    background-position: 190% 0;
+  }
+  38% {
+    background-position: -90% 0;
+  }
+  100% {
+    background-position: -90% 0;
+  }
+}
+
+/* Ambient wash: three fields orbiting on different periods so they never repeat the
+   same arrangement. Transform-only, so it composites on the GPU. */
+@keyframes amb-a {
+  0%,
+  100% { transform: translate3d(-6%, -4%, 0) scale(1); }
+  33%  { transform: translate3d(8%, 6%, 0) scale(1.16); }
+  66%  { transform: translate3d(-4%, 10%, 0) scale(0.94); }
+}
+@keyframes amb-b {
+  0%,
+  100% { transform: translate3d(5%, 6%, 0) scale(1.06); }
+  40%  { transform: translate3d(-9%, -6%, 0) scale(0.92); }
+  75%  { transform: translate3d(6%, -9%, 0) scale(1.14); }
+}
+@keyframes amb-c {
+  0%,
+  100% { transform: translate3d(4%, -8%, 0) scale(0.96); }
+  50%  { transform: translate3d(-7%, 7%, 0) scale(1.2); }
+}
+.amb-a { animation: amb-a 34s ease-in-out infinite; }
+.amb-b { animation: amb-b 44s ease-in-out infinite; }
+.amb-c { animation: amb-c 38s ease-in-out infinite; }
+
+/* ---------------------------------------------------------------------------
+   CONSOLE LAUNCH ARC
+   Registering the angle as a real <angle> custom property is what lets it be
+   interpolated - a plain --arc-angle would jump from 0 to 360 with no tween.
+   --------------------------------------------------------------------------- */
+@property --arc-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes arc-trace-spin {
+  to {
+    --arc-angle: 360deg;
+  }
+}
+
+@keyframes deck-scroll {
+  to { background-position: 0 72px; }
+}
+
+@keyframes deck-scan {
+  0%   { background-position: 0 -88px; opacity: 0; }
+  18%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { background-position: 0 100%; opacity: 0; }
+}
+
+/* Runs the six stage chips in sequence. Each chip carries the same animation with a
+   staggered delay, so the highlight walks the pipeline the way a real job would. */
+@keyframes stage-pulse {
+  0%, 100% { opacity: 0.55; }
+  6%       { opacity: 1; }
+  18%      { opacity: 0.55; }
+}
+
+
+/* The dome inhales over 7s. Scale + opacity only, and the translate is carried in
+   the same transform so it never fights the centring. */
+@keyframes arc-breathe {
+  0%,
+  100% {
+    transform: translate3d(-50%, 0, 0) scale(1);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(-50%, 0, 0) scale(1.045);
+    opacity: 1;
+  }
+}
+.animate-arc-breathe { animation: arc-breathe 7s ease-in-out infinite; }
+
+/* Idle heartbeat on the orchestration graph's hub - a slow ambient sign of life even
+   between real settlements, so the panel never reads as a static screenshot. */
+@keyframes hub-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.16); }
+  50%      { box-shadow: 0 0 0 10px rgba(245, 166, 35, 0); }
+}
+.hub-breathe { animation: hub-breathe 3.4s ease-in-out infinite; }
+.hub-breathe-still { animation: none; box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.16); }
+
+/* The orchestrator's rotating execution ring and its two orbiting particles - slow,
+   continuous, never synchronized with each other so the hub never reads as looping. */
+@keyframes hub-ring-spin { to { transform: rotate(360deg); } }
+.hub-ring { animation: hub-ring-spin 22s linear infinite; transform-origin: 50% 50%; }
+
+@keyframes orbit-cw { to { transform: rotate(360deg); } }
+@keyframes orbit-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+.orbit-a { animation: orbit-cw 13s linear infinite; }
+.orbit-b { animation: orbit-ccw 19s linear infinite; }
+
+/* Independent per-node drift - each caller supplies its own duration and delay so ten
+   nodes wandering at once never fall into the same rhythm. */
+@keyframes node-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25%      { transform: translate3d(var(--float-dx), calc(var(--float-dy) * -1), 0); }
+  50%      { transform: translate3d(0, 0, 0); }
+  75%      { transform: translate3d(calc(var(--float-dx) * -1), var(--float-dy), 0); }
+}
+.node-float { animation: node-float var(--float-dur, 6s) ease-in-out infinite; animation-delay: var(--float-delay, 0s); }
+
+/* Fades the ambient grid/glow field behind the graph to nothing at its own edges, so it
+   blends into the section rather than reading as a bordered rectangle. */
+.graph-field-mask {
+  mask-image: radial-gradient(closest-side, black 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(closest-side, black 60%, transparent 100%);
+}
+
+/* A second, slower counter-drift on the halo so the bloom above the rim never sits
+   perfectly still on top of the rim's own pulse. */
+@keyframes arc-halo-drift {
+  0%,
+  100% {
+    transform: translate3d(-50%, 0, 0) scale(1.02);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(-50%, -2%, 0) scale(1.1);
+    opacity: 1;
+  }
+}
+.animate-arc-halo { animation: arc-halo-drift 11s ease-in-out infinite; }
+
+/* Aurora sweep used inside the dark CTA panel */
+@keyframes aurora {
+  0%,
+  100% { transform: translate3d(-12%, 0, 0) rotate(0deg); }
+  50%  { transform: translate3d(12%, -6%, 0) rotate(8deg); }
+}
+.animate-aurora { animation: aurora 18s ease-in-out infinite; }
+
+/* Slow drift for hero gradient blobs */
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(0, -22px, 0) scale(1.06); }
+}
+.animate-drift { animation: drift 15s ease-in-out infinite; }
+.animate-drift-slow { animation: drift 22s ease-in-out infinite; }
+
+/* Scrollbars follow the active theme; cockpit panels keep their own (below). */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-2);
+  border-radius: 999px;
+  border: 3px solid var(--color-paper);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-4); }
+
+/* Dark cockpit panels (live feeds) keep their own subtle scrollbar. */
+.cockpit ::-webkit-scrollbar { width: 6px; height: 6px; }
+.cockpit ::-webkit-scrollbar-track { background: transparent; }
+.cockpit ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border: none;
+  border-radius: 999px;
+}
+.cockpit ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+
+/* Money pulse travelling along a pipeline connector while a task is being paid. */
+@keyframes flow {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translateY(400%); opacity: 0; }
+}
+.animate-flow { animation: flow 1.5s ease-in-out infinite; }
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: shimmer 1.8s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee, .animate-drift, .animate-drift-slow { animation: none; }
+  .amb-a, .amb-b, .amb-c, .animate-aurora, .animate-flow { animation: none; }
+  .hub-breathe { animation: none; box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.16); }
+  .hub-ring, .orbit-a, .orbit-b, .node-float { animation: none; }
+
+  /* The arc stays lit, it just stops breathing - and the border trace resolves to a
+     static ring so hover still gives feedback without motion. */
+  /* The keyframes carry the horizontal centring, so it has to be restated here or the
+     arc jumps half a screen to the right when motion is off. */
+  .animate-arc-breathe, .animate-arc-halo {
+    animation: none;
+    transform: translate3d(-50%, 0, 0);
+  }
+  /* The deck keeps its geometry and its lit stage, it just stops moving. */
+  .deck-floor { animation: none; }
+  .deck-scan { animation: none; opacity: 0; }
+  .stage-chip { animation: none !important; opacity: 0.75 !important; }
+  .arc-input { transition: none; }
+  .arc-input:hover, .arc-input:focus-within { transform: none; }
+  .arc-input:hover::before, .arc-input:focus-within::before { animation: none; }
+
+  /* Hold the headline mid-gradient and drop the sweep entirely - still full colour,
+     just no motion. */
+  .hero-gradient-text {
+    animation: none;
+    background-position: 40% 50%;
+  }
+  .hero-gradient-text::after {
+    animation: none;
+    opacity: 0;
+  }
+}

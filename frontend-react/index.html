@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AutoResearch — an autonomous research agent that pays other AI agents in real on-chain USDC via the x402 protocol on Base Sepolia." />
+    <title>AutoResearch — The agent that pays for its own research</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fraunces (variable serif) carries the headlines, Geist the UI, Geist Mono the
+         numbers and hashes. The serif/grotesk split is what gives the site its
+         "classic masthead over modern instrument" feel rather than one uniform sans. -->
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Resolve the theme before first paint so a dark-mode visitor never sees a white
+         flash. Stored choice wins; otherwise follow the OS. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('autoresearch-theme');
+          var dark = stored
+            ? stored === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
