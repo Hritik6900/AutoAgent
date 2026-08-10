@@ -1,0 +1,13 @@
+.venv/
+node_modules/
+frontend-react/node_modules/
+frontend-react/dist/
+data/*.db
+data/*.json
+.env
+.git/
+**/__pycache__/
+**/*.pyc
+extension/
+scripts/
+wallet/

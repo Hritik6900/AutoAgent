@@ -17,3 +17,8 @@ web3>=6.0.0
 # Local testing frontend (frontend/app.py)
 streamlit>=1.38.0
 requests>=2.32.0
+
+# MCP server (mcp_server/) - exposes the orchestrator to Claude Desktop, Claude Code,
+# Cursor and any other MCP client. Only needed to run `python -m mcp_server`; the
+# orchestrator and the microservices do not import it.
+mcp[cli]>=2.0.0

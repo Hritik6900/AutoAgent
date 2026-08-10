@@ -24,6 +24,7 @@ import { cn } from '../utils/cn';
 import { LiveDot } from './components/primitives';
 import { Logo } from './components/Logo';
 import { ThemeToggle } from './components/ThemeToggle';
+import { UserMenu } from './components/UserMenu';
 import { useNetworkStats } from './hooks/useNetworkStats';
 
 type MenuItem = {
@@ -108,9 +109,12 @@ const MegaPanel = ({
   </motion.div>
 );
 
+// "How it works" and "Features" are deliberately not repeated here as standalone links -
+// the Pipeline and Capabilities dropdowns above already point into those same pages'
+// sections, so a third/fourth top-level entry for them was pure duplication that pushed
+// the bar past its width and wrapped "How it works" onto three lines.
 const NAV_LINKS = [
-  { label: 'How it works', to: '/how-it-works' },
-  { label: 'Features', to: '/features' },
+  { label: 'MCP', to: '/mcp' },
   { label: 'Developers', to: '/developers' },
   { label: 'About', to: '/about' },
 ];
@@ -169,7 +173,7 @@ export const Nav = () => {
               onMouseLeave={scheduleClose}
               onClick={() => setOpen(open === 'pipeline' ? null : 'pipeline')}
               className={cn(
-                'rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200',
+                'whitespace-nowrap rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200',
                 open === 'pipeline'
                   ? 'bg-[var(--color-paper-3)] text-[var(--color-ink)]'
                   : 'text-[var(--color-ink-2)] hover:bg-[var(--color-paper-3)]/60 hover:text-[var(--color-ink)]',
@@ -185,7 +189,7 @@ export const Nav = () => {
               onMouseLeave={scheduleClose}
               onClick={() => setOpen(open === 'capabilities' ? null : 'capabilities')}
               className={cn(
-                'rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200',
+                'whitespace-nowrap rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200',
                 open === 'capabilities'
                   ? 'bg-[var(--color-paper-3)] text-[var(--color-ink)]'
                   : 'text-[var(--color-ink-2)] hover:bg-[var(--color-paper-3)]/60 hover:text-[var(--color-ink)]',
@@ -199,7 +203,7 @@ export const Nav = () => {
                 to={l.to}
                 onMouseEnter={scheduleClose}
                 className={cn(
-                  'relative rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200',
+                  'relative whitespace-nowrap rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200',
                   location.pathname === l.to
                     ? 'text-[var(--color-ink)]'
                     : 'text-[var(--color-ink-2)] hover:bg-[var(--color-paper-3)]/60 hover:text-[var(--color-ink)]',
@@ -221,6 +225,7 @@ export const Nav = () => {
               </span>
             </span>
             <ThemeToggle />
+            <UserMenu />
             <Link
               to="/console"
               className="hidden rounded-full bg-[var(--color-ink)] px-4 py-2 text-[13px] font-semibold text-[var(--color-paper)] shadow-[var(--shadow-btn)] transition-all duration-200 hover:-translate-y-px hover:bg-[var(--color-ink-hover)] hover:shadow-[var(--shadow-btn-hover)] active:translate-y-0 active:scale-[0.98] sm:inline-flex"
@@ -257,10 +262,10 @@ export const Nav = () => {
                   <MegaPanel
                     items={CAPABILITIES}
                     featured={{
-                      title: 'Every claim has a receipt',
-                      desc: 'Cost, transaction hash and a confidence grade attached to each sentence.',
-                      to: '/features',
-                      cta: 'See all capabilities',
+                      title: 'Plug it into Claude',
+                      desc: 'Runs as an MCP server. Five tools, and an agent that pays its own way behind them.',
+                      to: '/mcp',
+                      cta: 'Connect a client',
                     }}
                   />
                 )}

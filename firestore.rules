@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// Firestore security rules for AutoResearch.
+//
+// This database is written directly from the browser, so these rules are the only thing
+// standing between one signed-in user and everyone else's data - there is no server in
+// front of Firestore to check anything. Default is deny; each allow below is deliberate.
+//
+// Deploy:  firebase deploy --only firestore:rules
+// Until they are deployed, the console's default rules apply, which are either
+// locked-down (nothing works) or test-mode (world readable) - neither is what you want.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+
+      // On create the document must claim the uid it is stored under, otherwise a user
+      // could seed a profile at someone else's path before they ever sign up.
+      allow create: if isOwner(uid) && request.resource.data.uid == uid;
+
+      // uid is immutable: allowing it to change would let a document be re-pointed at
+      // another account while staying readable by its original owner.
+      allow update: if isOwner(uid) && request.resource.data.uid == resource.data.uid;
+
+      // No client deletes. Account removal should tear down the auth user and its
+      // subcollections together, which a single client-side delete cannot do.
+      allow delete: if false;
+
+      // Saved research jobs. The orchestrator keeps job state in memory and loses it on
+      // restart, so for anything saved here this is the only surviving copy of the report.
+      match /jobs/{jobId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /factChecks/{checkId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Anything not matched above is denied, including any collection added later - a new
+    // feature has to come here and say what it needs rather than inheriting access.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

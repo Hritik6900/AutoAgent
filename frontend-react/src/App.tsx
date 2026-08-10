@@ -1,12 +1,15 @@
 import { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { AgentProvider } from './context/AgentContext';
+import { AuthProvider } from './context/AuthContext';
 import { SiteLayout } from './site/SiteLayout';
 import { Home } from './site/pages/Home';
 import { HowItWorks } from './site/pages/HowItWorks';
 import { Features } from './site/pages/Features';
+import { Mcp } from './site/pages/Mcp';
 import { Developers } from './site/pages/Developers';
 import { About } from './site/pages/About';
+import { SignIn } from './site/pages/SignIn';
 import { NotFound } from './site/pages/NotFound';
 
 // The console pulls in the markdown renderer and the whole mission-control tree, none
@@ -14,6 +17,10 @@ import { NotFound } from './site/pages/NotFound';
 const ConsolePage = lazy(() =>
   import('./pages/ConsolePage').then((m) => ({ default: m.ConsolePage })),
 );
+
+// Reads and writes Firestore, so it pulls in that whole SDK. Only a signed-in user ever
+// opens it - keep it out of everyone else's first load.
+const Account = lazy(() => import('./site/pages/Account').then((m) => ({ default: m.Account })));
 
 const ConsoleFallback = () => (
   <div className="console-root flex min-h-screen items-center justify-center bg-[var(--color-obs-bg)]">
@@ -26,26 +33,40 @@ const ConsoleFallback = () => (
 
 function App() {
   return (
-    <AgentProvider>
-      <Routes>
-        <Route element={<SiteLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/developers" element={<Developers />} />
-          <Route path="/about" element={<About />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-        <Route
-          path="/console"
-          element={
-            <Suspense fallback={<ConsoleFallback />}>
-              <ConsolePage />
-            </Suspense>
-          }
-        />
-      </Routes>
-    </AgentProvider>
+    // Auth wraps everything, including the console: signing in is optional, but the
+    // console still needs to know who you are to save a finished report to your account.
+    <AuthProvider>
+      <AgentProvider>
+        <Routes>
+          <Route element={<SiteLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/mcp" element={<Mcp />} />
+            <Route path="/developers" element={<Developers />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/signin" element={<SignIn />} />
+            <Route
+              path="/account"
+              element={
+                <Suspense fallback={<div className="min-h-[60vh]" />}>
+                  <Account />
+                </Suspense>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+          <Route
+            path="/console"
+            element={
+              <Suspense fallback={<ConsoleFallback />}>
+                <ConsolePage />
+              </Suspense>
+            }
+          />
+        </Routes>
+      </AgentProvider>
+    </AuthProvider>
   );
 }
 

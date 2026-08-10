@@ -18,10 +18,11 @@
   --color-line: #E7E5E0;
   --color-line-2: #D6D3CC;
 
-  /* Brand: Base-blue -> violet -> settlement green */
-  --color-brand: #1D4ED8;
-  --color-brand-2: #4F46E5;
-  --color-brand-3: #7C3AED;
+  /* Brand: one warm amber, in three weights - status dots, focus rings, progress and
+     selected states all read from this rather than the old Base-blue accent. */
+  --color-brand: #D97706;
+  --color-brand-2: #D97706;
+  --color-brand-3: #B45309;
   --color-signal: #059669;
   --color-signal-2: #10B981;
   --color-ember: #EA580C;
@@ -128,41 +129,46 @@
 
   /* Console launch arc: a large ring of light whose top edge arcs up behind the
      prompt box. --arc-rim is the thin bright edge, --arc-halo the diffuse bloom
-     above it, --arc-core the fill inside the dome. Light mode keeps the whole
-     thing well under half strength so it reads as a tinted glow on paper rather
-     than a neon shape. */
-  --arc-rim: rgba(109, 40, 217, 0.62);
-  --arc-halo: rgba(99, 102, 241, 0.42);
-  --arc-core: rgba(37, 99, 235, 0.22);
-  --arc-trace: rgba(99, 102, 241, 0.9);
+     above it, --arc-core the fill inside the dome. Architectural light reflecting off
+     the console itself - warm amber plus a soft white bloom, never a colourful gel -
+     so both themes read as the same one-accent product instead of the console having
+     its own separate neon identity. */
+  --arc-rim: rgba(217, 119, 6, 0.5);
+  --arc-halo: rgba(245, 166, 35, 0.34);
+  --arc-core: rgba(255, 255, 255, 0.4);
+  --arc-trace: rgba(245, 166, 35, 0.9);
   --arc-strength: 0.95;
-  --arc-lift: rgba(79, 70, 229, 0.22);
-  --composer-bg: rgba(255, 255, 255, 0.72);
+  --arc-lift: rgba(180, 83, 9, 0.20);
+  --composer-bg: rgba(255, 255, 255, 0.42);
+  --composer-glow: rgba(217, 119, 6, 0.6);
+  --console-vignette: rgba(50, 35, 20, 0.07);
 
   /* Launch deck: the perspective floor, the HUD chrome on the prompt panel, and the
-     segmented budget meter. Light keeps everything in the brand blue so it reads as a
-     technical drawing on paper rather than a neon arcade. */
-  --deck-line: rgba(29, 78, 216, 0.20);
-  --deck-bracket: rgba(29, 78, 216, 0.55);
-  --deck-scan: rgba(37, 99, 235, 0.22);
-  /* The big rising dome at the bottom of the console. On paper it has to be a tinted
-     shape rather than a white one, or it would be invisible. */
-  --dome-core: rgba(79, 70, 229, 0.42);
-  --dome-glow: rgba(124, 58, 237, 0.20);
+     segmented budget meter. Warm neutral grid with an amber bracket accent, matching
+     the arc above it rather than running its own blue technical-drawing palette. */
+  --deck-line: rgba(120, 90, 60, 0.14);
+  --deck-bracket: rgba(217, 119, 6, 0.5);
+  --deck-scan: rgba(245, 166, 35, 0.2);
+  /* The big rising dome at the bottom of the console: a warm amber rim with a soft
+     white bloom behind it - reflected light off the console, not a coloured shape. */
+  --dome-core: rgba(217, 119, 6, 0.4);
+  --dome-glow: rgba(255, 255, 255, 0.5);
 
   /* ---- Dark panels that appear on BOTH themes ----
      The closing CTA, the hero payment terminal and the nav's featured card are dark
      surfaces regardless of theme, so their colours were hardcoded inline. Tokenising
      them is what lets the dark theme give them an obsidian treatment without touching
      how they look in light - these values are exactly what light renders today. */
+  /* Toned down to sit at the same intensity as --hero-card-glow below, rather than
+     visibly louder than every other dark panel on the page. */
   --cta-bg: linear-gradient(155deg, #0A0503 0%, #431407 48%, #7C2D12 100%);
   --cta-glow-1: rgba(217, 119, 6, 0.85);
   --cta-glow-2: rgba(245, 158, 11, 0.7);
   --cta-glow-3: rgba(234, 88, 12, 0.65);
-  --cta-veil: radial-gradient(80% 70% at 50% 50%, rgba(10, 5, 3, 0.55), rgba(10, 5, 3, 0.15));
-  --cta-glow-1-opacity: 0.7;
-  --cta-glow-2-opacity: 0.65;
-  --cta-glow-3-opacity: 0.55;
+  --cta-veil: radial-gradient(80% 70% at 50% 50%, rgba(10, 5, 3, 0.6), rgba(10, 5, 3, 0.22));
+  --cta-glow-1-opacity: 0.42;
+  --cta-glow-2-opacity: 0.38;
+  --cta-glow-3-opacity: 0.32;
 
   --hero-card-frame: linear-gradient(150deg, rgba(217, 119, 6, 0.55), rgba(234, 88, 12, 0.42) 48%, rgba(5, 150, 105, 0.4));
   --hero-card-glow-1: #D97706;
@@ -171,9 +177,19 @@
 
   --nav-featured-bg: linear-gradient(158deg, #180A06 0%, #7C2D12 48%, #EA580C 118%);
   --narration-glow: #D97706;
-  --logo-tile: linear-gradient(140deg, #0052FF 0%, #2C4BE8 52%, #4338CA 100%);
+  /* Was a saturated "Base blue" - the single loudest, most off-brand thing on an
+     otherwise warm amber page. Swapped for the same ember tone the rest of light
+     theme's marks use (nav-featured-bg, brand tokens). */
+  --logo-tile: linear-gradient(140deg, #F97316 0%, #EA580C 52%, #C2410C 100%);
   /* How strongly a pipeline stage's accent colour blooms behind its illustration. */
   --stage-glow-opacity: 0.5;
+
+  /* SettlementGraph's idle (non-lit) nodes: --color-line is nearly invisible against
+     white/cream, so on light theme they read as flat blank circles instead of chips.
+     Dark theme already has plenty of contrast here (near-black surface, same border),
+     so its two counterparts below just echo --color-line/none unchanged. */
+  --graph-node-border-idle: #D3CDBF;
+  --graph-node-shadow-idle: 0 1px 2px rgba(41, 30, 18, 0.07), 0 6px 14px -8px rgba(41, 30, 18, 0.14);
 
   --tone-signal-bg: #ECFDF5;
   --tone-signal-text: #047857;
@@ -199,6 +215,14 @@
 
   --tone-violet-bg: #F5F3FF;
   --tone-violet-text: #7C3AED;
+
+  /* Custom scrollbar: a slim amber-tinted thumb rather than the OS default grey, so
+     scrolling stays inside the site's one accent colour instead of breaking it. */
+  --scrollbar-thumb-1: rgba(217, 119, 6, 0.48);
+  --scrollbar-thumb-2: rgba(180, 83, 9, 0.38);
+  --scrollbar-thumb-1-hover: rgba(217, 119, 6, 0.72);
+  --scrollbar-thumb-2-hover: rgba(154, 52, 18, 0.60);
+  --scrollbar-glow: rgba(217, 119, 6, 0.35);
 }
 
 /* ---------------------------------------------------------------------------
@@ -264,8 +288,8 @@
   --color-obs-border: rgba(255, 255, 255, 0.06);
   --color-obs-border-strong: rgba(255, 255, 255, 0.12);
 
-  --nav-surface: rgba(15, 15, 15, 0.55);
-  --nav-surface-idle: rgba(12, 12, 12, 0.38);
+  --nav-surface: rgba(15, 15, 15, 0.96);
+  --nav-surface-idle: rgba(12, 12, 12, 0.55);
   --nav-blur: 30px;
   --grid-line: rgba(255, 255, 255, 0.028);
   --blob-opacity: 0.85;
@@ -285,7 +309,12 @@
   --arc-trace: rgba(245, 166, 35, 0.9);
   --arc-strength: 1;
   --arc-lift: rgba(0, 0, 0, 0.75);
-  --composer-bg: rgba(17, 17, 17, 0.82);
+  --composer-bg: rgba(17, 17, 17, 0.5);
+  /* The console's own dark-mode light stays deliberately near-white everywhere else
+     (arc-halo), but the glass panel needs something with real colour to reveal, so
+     this one spot gets the site's amber instead. */
+  --composer-glow: rgba(245, 166, 35, 0.4);
+  --console-vignette: rgba(0, 0, 0, 0.3);
 
   --deck-line: rgba(255, 255, 255, 0.045);
   --deck-bracket: rgba(245, 166, 35, 0.5);
@@ -329,6 +358,11 @@
   --color-brand-3: #D98A0B;
   --color-signal: #34D399;
   --color-ember: #F5A623;
+
+  /* Dark theme's idle graph nodes already read fine against a near-black surface -
+     leave them exactly as they were (var(--color-line) border, no extra shadow). */
+  --graph-node-border-idle: var(--color-line);
+  --graph-node-shadow-idle: none;
 
   /* Atmosphere, not decoration. One soft warm light sits behind the hero and the two
      flanks are pure white at a whisper - together they read as a room that happens to
@@ -374,6 +408,12 @@
   --narration-glow: rgba(255, 255, 255, 0.10);
   --logo-tile: linear-gradient(140deg, #2A2A2A 0%, #1C1C1C 52%, #141414 100%);
   --stage-glow-opacity: 0.16;
+
+  --scrollbar-thumb-1: rgba(245, 166, 35, 0.32);
+  --scrollbar-thumb-2: rgba(217, 119, 6, 0.22);
+  --scrollbar-thumb-1-hover: rgba(245, 166, 35, 0.75);
+  --scrollbar-thumb-2-hover: rgba(245, 166, 35, 0.40);
+  --scrollbar-glow: rgba(245, 166, 35, 0.5);
 }
 
 @layer base {
@@ -517,7 +557,15 @@
     @apply inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-1.5 text-[11.5px] font-medium text-[var(--color-ink-2)];
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    transition: border-color 0.25s ease, color 0.25s ease, background-color 0.25s ease;
+    transition:
+      border-color 0.25s ease, color 0.25s ease, background-color 0.25s ease,
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+  }
+
+  .chip:hover {
+    transform: translateY(-1.5px) scale(1.035);
+    border-color: var(--color-line-2);
+    box-shadow: var(--shadow-btn);
   }
 
   .chip-live::before {
@@ -567,12 +615,12 @@
   }
 
   .btn-primary:hover {
-    transform: translateY(-1.5px);
+    transform: translateY(-1.5px) scale(1.012);
     box-shadow: var(--shadow-btn-hover);
   }
 
   .btn-primary:active {
-    transform: translateY(0) scale(0.985);
+    transform: translateY(0) scale(0.982);
     box-shadow: var(--shadow-btn);
     transition-duration: 0.09s;
   }
@@ -590,12 +638,12 @@
   }
 
   .btn-secondary:hover {
-    transform: translateY(-1.5px);
+    transform: translateY(-1.5px) scale(1.012);
     box-shadow: var(--shadow-card-hover);
   }
 
   .btn-secondary:active {
-    transform: translateY(0) scale(0.985);
+    transform: translateY(0) scale(0.982);
     box-shadow: var(--shadow-card);
     transition-duration: 0.09s;
   }
@@ -749,6 +797,15 @@
   .arc-input {
     position: relative;
     isolation: isolate;
+    backdrop-filter: blur(28px) saturate(1.7);
+    -webkit-backdrop-filter: blur(28px) saturate(1.7);
+    /* True glass, not a frosted rectangle: a bright hairline along the top edge where
+       light would catch a physical pane, and a soft ambient shadow underneath so it
+       still reads as sitting above the arc rather than painted onto it. */
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 12px 40px -16px rgba(0, 0, 0, 0.22);
     transition:
       transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
@@ -763,6 +820,8 @@
        same brightness as the travelling highlight and swallow it. The lift is carried
        by the soft bloom instead. */
     box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
       0 20px 64px -20px var(--arc-lift),
       0 2px 10px -4px rgb(0 0 0 / 0.25);
   }
@@ -1145,25 +1204,68 @@
 .animate-drift { animation: drift 15s ease-in-out infinite; }
 .animate-drift-slow { animation: drift 22s ease-in-out infinite; }
 
-/* Scrollbars follow the active theme; cockpit panels keep their own (below). */
-::-webkit-scrollbar { width: 10px; height: 10px; }
+/* The hero's focused light, centred on the headline rather than washing the whole
+   section - a very slow breathe so the system reads as alive without anyone
+   consciously clocking the motion. */
+@keyframes hero-glow-breathe {
+  0%, 100% { opacity: 0.7; transform: translate3d(-50%, 0, 0) scale(1); }
+  50%      { opacity: 1; transform: translate3d(-50%, 0, 0) scale(1.06); }
+}
+.hero-glow { animation: hero-glow-breathe 9s ease-in-out infinite; }
+
+/* A handful of near-invisible motes drifting behind the headline - the "tiny
+   execution particles" that make the hero feel like a running system rather than a
+   printed page. Each instance gets its own duration/delay via inline custom
+   properties so five dots never move in lockstep. */
+@keyframes hero-mote {
+  0%, 100%  { transform: translate3d(0, 0, 0); opacity: var(--mote-op, 0.35); }
+  50%       { transform: translate3d(var(--mote-dx, 8px), calc(var(--mote-dx, 8px) * -1.6), 0); opacity: calc(var(--mote-op, 0.35) * 0.4); }
+}
+.hero-mote { animation: hero-mote var(--mote-dur, 10s) ease-in-out infinite; animation-delay: var(--mote-delay, 0s); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-glow { animation: none; opacity: 0.85; transform: translate3d(-50%, 0, 0); }
+  .hero-mote { animation: none; opacity: 0; }
+}
+
+/* Scrollbars follow the active theme; cockpit panels keep their own (below). A slim
+   amber-gradient thumb rather than the OS default grey, with a soft glow on hover -
+   the one accent colour the whole site uses, carried into the one chrome element
+   every browser normally renders for you. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-1) transparent;
+}
+::-webkit-scrollbar { width: 11px; height: 11px; }
 ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-line-2);
+  background: linear-gradient(180deg, var(--scrollbar-thumb-1), var(--scrollbar-thumb-2));
   border-radius: 999px;
   border: 3px solid var(--color-paper);
+  transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--color-ink-4); }
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--scrollbar-thumb-1-hover), var(--scrollbar-thumb-2-hover));
+  box-shadow: 0 0 10px var(--scrollbar-glow);
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-1-hover);
+}
 
-/* Dark cockpit panels (live feeds) keep their own subtle scrollbar. */
+/* Dark cockpit panels (live feeds) keep their own subtle scrollbar - always dark
+   regardless of theme, so it gets its own amber-on-black variant rather than the
+   page tokens above. */
+.cockpit { scrollbar-color: rgba(245, 166, 35, 0.35) transparent; }
 .cockpit ::-webkit-scrollbar { width: 6px; height: 6px; }
 .cockpit ::-webkit-scrollbar-track { background: transparent; }
 .cockpit ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(245, 166, 35, 0.3);
   border: none;
   border-radius: 999px;
+  transition: background 0.3s ease;
 }
-.cockpit ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+.cockpit ::-webkit-scrollbar-thumb:hover { background: rgba(245, 166, 35, 0.55); }
 
 /* Money pulse travelling along a pipeline connector while a task is being paid. */
 @keyframes flow {
@@ -1183,6 +1285,47 @@
   transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
   animation: shimmer 1.8s infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   PRINT — the report's "Print / Save as PDF" export. Isolates #report-print-area
+   (FinalReport.tsx) from the rest of the console (nav, live mission control, hero)
+   and forces light-paper colours regardless of which theme was active, since a
+   printed page ignores dark mode's whole reason for existing. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #report-print-area,
+  #report-print-area * {
+    visibility: visible;
+  }
+  #report-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    --color-ink: #111111;
+    --color-ink-2: #333333;
+    --color-ink-3: #555555;
+    --color-ink-4: #777777;
+    --color-paper: #ffffff;
+    --color-paper-2: #ffffff;
+    --color-paper-3: #f4f4f4;
+    --color-line: #dddddd;
+    --color-line-2: #cccccc;
+    --tone-signal-bg: #ffffff;
+    --shadow-card-hover: none;
+  }
+  #report-print-area .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  #report-print-area .no-print {
+    display: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

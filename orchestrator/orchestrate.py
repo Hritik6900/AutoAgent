@@ -1,13 +1,14 @@
 import asyncio
+import re
 
 import httpx
 
-from shared import ledger
+from shared import api_keys, ledger
 from shared.config import SERVICE_URLS, TASK_SERVICE_MAP, SERVICE_LABELS, AUCTION_PROVIDERS
 from shared.x402_client import pay_and_fetch_json, price_to_number
 
 from shared.provenance import compute_report_hash, submit_provenance_tx
-from shared.rationale import explain
+from shared.rationale import explain, summarize_error
 from shared.self_critique import critique_citations, summarize_trust
 
 from . import job_store
@@ -162,6 +163,36 @@ def _pick_first_affordable(candidates: list[dict], committed_spend: float, budge
     return None
 
 
+"""Faults worth trying the *same* provider again for, rather than failing over.
+
+The public x402 facilitator is the shared dependency every paid call goes through, and it
+is intermittently slow. Two of its failure modes look like provider failures but are not:
+
+  * HTTP 5xx - the service's own x402 middleware raised while calling facilitator/verify
+    (httpcore.ConnectTimeout, since the SDK builds its client with no timeout override).
+  * HTTP 402 *after* payment was attached - verification came back invalid, so the server
+    re-issued the payment requirement. No money moved; a fresh authorization usually
+    goes through.
+
+Neither says anything about the provider, and for task types with a single provider
+(fact_check, data_enrichment) failing over is not even an option - the task would simply
+be dropped over a network blip.
+
+A refused connection is excluded deliberately: that means the process is down, which is a
+real provider failure and exactly the case where failing over immediately is correct
+(and what the kill-a-service demo depends on).
+"""
+_RETRYABLE_STATUS = re.compile(r"failed with (5\d\d|402)\b")
+
+
+def _is_transient(err: Exception) -> bool:
+    if isinstance(err, (httpx.TimeoutException, httpx.RemoteProtocolError)):
+        return True
+    if isinstance(err, httpx.ConnectError):
+        return False  # connection refused - the provider really is gone
+    return bool(_RETRYABLE_STATUS.search(str(err)))
+
+
 async def _build_candidates(task: dict) -> tuple[list[dict], list[dict] | None]:
     """Returns (candidates, quotes_considered) for a task, in priority order: for an
     auction task type that's cheapest-first (a live reverse auction); otherwise it's
@@ -291,6 +322,9 @@ async def run_job(job_id: str) -> None:
                 original_name = candidate["name"]
                 attempt = 0
                 last_error = None
+                # Reset whenever we move to a different provider, so each one gets its
+                # own allowance rather than sharing a pool with the one that just failed.
+                transient_retries_left = 1
 
                 while True:
                     url = candidate["url"]
@@ -346,7 +380,13 @@ async def run_job(job_id: str) -> None:
                             )
                             await _narrate(
                                 job_id, "provider_switched",
-                                {"from_name": original_name, "to_name": name, "error": last_error},
+                                {
+                                    "from_name": original_name,
+                                    "to_name": name,
+                                    # Condensed: the raw x402 refusal embeds amounts in
+                                    # atomic USDC, which the narrator reported as dollars.
+                                    "error": summarize_error(last_error),
+                                },
                                 task_id=task["task_id"],
                             )
                         job_store.upsert_step(job_id, task["task_id"], **completion_patch)
@@ -354,6 +394,15 @@ async def run_job(job_id: str) -> None:
                     except Exception as err:
                         last_error = str(err)
                         job_store.upsert_step(job_id, task["task_id"], status="failed", error=last_error)
+
+                        # A shared-infrastructure hiccup, not this provider's fault - give
+                        # the same one another go before writing it off. Costs nothing: the
+                        # payment never settled, which is why the call failed at all.
+                        if transient_retries_left > 0 and _is_transient(err):
+                            transient_retries_left -= 1
+                            print(f"[orchestrator] transient failure on {name}, retrying once: {last_error[:120]}")
+                            await asyncio.sleep(1.5)
+                            continue
 
                         if not fallback_candidates:
                             # No alternate provider for this task type - clean stop. The job
@@ -385,6 +434,7 @@ async def run_job(job_id: str) -> None:
 
                         candidate = next_candidate
                         attempt += 1
+                        transient_retries_left = 1
                         continue
 
             await asyncio.gather(*(run_one(*args) for args in to_run))
@@ -453,3 +503,10 @@ async def run_job(job_id: str) -> None:
 
     except Exception as err:
         job_store.update_job(job_id, status="failed", error=str(err))
+
+    finally:
+        # The job can no longer spend, however it ended - release the budget reserved for
+        # it at launch so the caller's remaining quota reflects what was actually paid.
+        # In a finally block on purpose: a crash that skipped this would silently burn
+        # that caller's daily allowance until midnight UTC.
+        api_keys.settle_job(job_id)

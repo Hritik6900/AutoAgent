@@ -22,7 +22,7 @@ export const OrchestrationStrip = () => {
 
   return (
     <div
-      className="mx-auto mt-7 flex max-w-[560px] flex-wrap items-center justify-center gap-1.5"
+      className="mx-auto mt-10 flex max-w-[560px] flex-wrap items-center justify-center gap-1.5"
       aria-hidden="true"
     >
       {TOKENS.map((t, i) => (

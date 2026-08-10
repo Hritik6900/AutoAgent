@@ -5,6 +5,7 @@ import {
   Gavel,
   Lock,
   MousePointer2,
+  Plug,
   Radio,
   Receipt,
   ShieldCheck,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Hero } from '../components/Hero';
 import { LiveProofStrip, TxTicker } from '../components/LiveProof';
+import { McpSessionPanel } from '../components/McpSession';
 import { PipelineDiagram } from '../components/PipelineDiagram';
 import { SettlementGraph } from '../components/SettlementGraph';
 import { Reveal, SectionHeading } from '../components/primitives';
@@ -212,6 +214,52 @@ export const Home = () => (
               </Link>
             </Reveal>
           ))}
+        </div>
+      </div>
+    </section>
+
+    <div className="site-container">
+      <div className="rule-node" />
+    </div>
+
+    {/* ---------- MCP ---------- */}
+    <section className="py-24">
+      <div className="site-container">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+          <Reveal>
+            <div className="eyebrow">Model Context Protocol</div>
+            <h2 className="mt-4 text-[32px] leading-[1.1] tracking-[-0.02em] sm:text-[40px]">
+              Hand it to your own agent
+            </h2>
+            <p className="lede mt-5">
+              AutoResearch runs as an MCP server. Claude, Cursor or anything else that
+              speaks the protocol gets five tools — and behind them, an agent that plans
+              the work, auctions it to competing providers and pays each one in USDC.
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-2">
+              {['run_research', 'get_research_status', 'get_research_report'].map((t) => (
+                <span key={t} className="chip">
+                  {t}
+                </span>
+              ))}
+              <span className="chip">+2</span>
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link to="/mcp" className="btn-primary px-6 py-3">
+                <Plug className="h-4 w-4" />
+                Connect a client
+              </Link>
+              <Link to="/developers" className="btn-secondary px-6 py-3">
+                Raw HTTP API
+              </Link>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.1}>
+            <McpSessionPanel />
+          </Reveal>
         </div>
       </div>
     </section>

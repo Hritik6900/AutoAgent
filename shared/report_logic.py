@@ -4,6 +4,7 @@ services/report-gen-cheap). Splitting them into separate processes, rather than 
 routes on one app, means killing one during a demo genuinely leaves the other
 reachable, so the orchestrator's tier-fallback is a real failover, not a no-op.
 """
+import json
 import re
 
 from fastapi import HTTPException, Request
@@ -41,6 +42,64 @@ _REPORT_MARKER = "===REPORT==="
 _CITATIONS_MARKER = "===CITATIONS==="
 
 
+def _salvage_citations(raw: str) -> list[dict]:
+    """Parse the citations array, tolerating one that was cut off by the token limit.
+
+    The citations block is the last thing the model writes, so it is the first thing lost
+    when a response runs long - and `extract_json` cannot help, because no prefix of an
+    unterminated array is valid JSON. Discarding the whole response over a clipped tail
+    would throw away a complete, well-formed report and fall back to the template, which
+    is a far worse outcome than a report carrying one fewer citation.
+
+    So: try the array as written, and if that fails, keep whatever complete `{...}`
+    objects made it out and drop the partial one.
+    """
+    try:
+        parsed = extract_json(raw)
+        if isinstance(parsed, list):
+            return parsed
+    except (ValueError, TypeError):
+        pass
+
+    start = raw.find("[")
+    if start == -1:
+        return []
+
+    objects: list[dict] = []
+    depth = 0
+    obj_start = -1
+    in_string = False
+    escaped = False
+
+    for i in range(start, len(raw)):
+        ch = raw[i]
+        if in_string:
+            # A quote only closes the string if it isn't itself escaped.
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            if depth == 0:
+                obj_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and obj_start != -1:
+                try:
+                    objects.append(json.loads(raw[obj_start : i + 1], strict=False))
+                except json.JSONDecodeError:
+                    pass
+                obj_start = -1
+
+    return objects
+
+
 async def llm_report(query: str, sections: list[dict], tier: str) -> dict:
     sections_text = "\n\n---\n\n".join(
         f"[task_id={s['task_id']} type={s['task_type']} source={s.get('source_service')}"
@@ -55,24 +114,48 @@ async def llm_report(query: str, sections: list[dict], tier: str) -> dict:
     # class of bug entirely - the markdown is raw text needing no escaping, and only
     # the short citations list needs to parse as JSON (much lower risk of malformed
     # output at that size).
-    result_text = await call_llm(
-        tier=tier,
-        system=(
-            "You are a research report writer. Given a user query and a set of source sections (each tagged "
-            "with a task_id and source service), write a well-organized, cited markdown research report, "
-            "then list every citation.\n\n"
-            f"Respond in EXACTLY this format and nothing else:\n\n{_REPORT_MARKER}\n"
-            "<the markdown report, with headings - every substantive claim should reference its task_id in "
-            f"brackets like [t2]>\n\n{_CITATIONS_MARKER}\n"
-            '<a JSON array only, e.g. [{"claim": "...", "source_service": "...", "source_url": "..."|null, '
-            '"task_id": "..."}] - one entry per claim you attributed, matched to the task_id and source_service '
-            "it came from>"
-        ),
-        user=f"Query: {query}\n\nSource sections:\n\n{sections_text}",
-        json_mode=False,
-        max_tokens=2200 if tier == "strong" else 1400,
-        timeout=30,
+    system = (
+        "You are a research report writer. Given a user query and a set of source sections (each tagged "
+        "with a task_id and source service), write a well-organized, cited markdown research report, "
+        "then list every citation.\n\n"
+        f"Respond in EXACTLY this format and nothing else:\n\n{_REPORT_MARKER}\n"
+        "<the markdown report, with headings - every substantive claim should reference its task_id in "
+        f"brackets like [t2]>\n\n{_CITATIONS_MARKER}\n"
+        '<a JSON array only, e.g. [{"claim": "...", "source_service": "...", "source_url": "..."|null, '
+        '"task_id": "..."}] - one entry per claim you attributed, matched to the task_id and source_service '
+        "it came from>"
     )
+    user = f"Query: {query}\n\nSource sections:\n\n{sections_text}"
+
+    async def attempt() -> str:
+        return await call_llm(
+            tier=tier,
+            system=system,
+            user=user,
+            json_mode=False,
+            # The report and its citations share one budget, and the citations come last,
+            # so too tight a cap silently clips them. Gemini 3.x is also markedly more
+            # verbose than the 2.x models this was originally tuned for - 2200 was losing
+            # the tail of the citations array.
+            max_tokens=4000 if tier == "strong" else 1400,
+            # Raised with it: a longer response legitimately takes longer to generate, and
+            # a timeout here throws away the whole report.
+            timeout=60,
+            # Gemini 3.x thinks by default and intermittently spills that reasoning into
+            # the content field, which cannot satisfy a strict output format. Nothing here
+            # benefits from chain-of-thought - the analysis already happened upstream, this
+            # call only has to write it up.
+            reasoning_effort="none",
+        )
+
+    result_text = await attempt()
+
+    # One retry, because the failure is intermittent rather than deterministic and the
+    # x402 payment for this call has already been made - falling straight through to the
+    # template would mean paying the premium tier and shipping a deterministic stub.
+    if _REPORT_MARKER not in result_text or _CITATIONS_MARKER not in result_text:
+        print(f"[report-gen:{tier}] malformed response, retrying once: {result_text[:120]!r}")
+        result_text = await attempt()
 
     if _REPORT_MARKER not in result_text or _CITATIONS_MARKER not in result_text:
         raise ValueError(f"LLM report response missing required section markers: {result_text[:200]}")
@@ -80,10 +163,12 @@ async def llm_report(query: str, sections: list[dict], tier: str) -> dict:
     _, rest = result_text.split(_REPORT_MARKER, 1)
     report_markdown, citations_raw = rest.split(_CITATIONS_MARKER, 1)
     report_markdown = report_markdown.strip()
-    citations = extract_json(citations_raw.strip())
+    citations = _salvage_citations(citations_raw.strip())
 
-    if not report_markdown or not isinstance(citations, list):
-        raise ValueError("LLM report response missing required fields")
+    # The report is the deliverable; citations can survive being short a clipped entry.
+    # An empty report cannot be salvaged, so that still falls back to the template.
+    if not report_markdown:
+        raise ValueError("LLM report response contained no report body")
     return {"report_markdown": report_markdown, "citations": citations}
 
 

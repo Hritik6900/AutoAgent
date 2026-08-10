@@ -103,6 +103,13 @@ const ENDPOINTS = [
     body: 'ledger[]',
     tone: 'neutral' as const,
   },
+  {
+    method: 'GET',
+    path: '/api/quota',
+    desc: 'This caller’s remaining daily budget, per-job maximum and rate-limit usage. POST /api/research answers 402 with the limit it hit rather than overspending.',
+    body: 'remaining_today_usdc · max_job_budget_usdc',
+    tone: 'neutral' as const,
+  },
 ];
 
 const SHAPES = [
@@ -161,7 +168,7 @@ export const Developers = () => {
         eyebrow="Developers"
         title={
           <>
-            Three endpoints.
+            Plain HTTP.
             <br className="hidden sm:block" /> No SDK required.
           </>
         }
@@ -232,7 +239,7 @@ export const Developers = () => {
             <SectionHeading
               eyebrow="API reference"
               title="The whole surface area"
-              body="No authentication — the orchestrator is meant to run on your machine, alongside the eight paid services it hires."
+              body="Keys are optional while the orchestrator runs on your machine, alongside the eight paid services it hires. Set REQUIRE_API_KEY=true before exposing it and every call needs one."
             />
           </Reveal>
 

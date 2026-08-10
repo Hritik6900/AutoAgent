@@ -22,19 +22,23 @@ type NodeId = GraphTaskType | 'hub' | 'wallet' | 'providers' | 'payment' | 'ledg
 
 type Float = { dx: number; dy: number; dur: number; delay: number };
 
+/* One warm family, no blue/green/violet identity colours - a handful of amber shades
+   so nine nodes still read as distinct without breaking the site's one-accent rule.
+   Green stays reserved for genuine online/success states (LiveDot), never for a node's
+   resting identity. */
 const WORK: Record<GraphTaskType, { label: string; icon: typeof Search; accent: string; float: Float }> = {
   web_search: { label: 'Search', icon: Search, accent: '#F59E0B', float: { dx: 4, dy: 5, dur: 5.4, delay: 0 } },
-  fact_check: { label: 'Fact-Check', icon: BadgeCheck, accent: '#10B981', float: { dx: 5, dy: 4, dur: 6.1, delay: 0.4 } },
-  data_enrichment: { label: 'Enrichment', icon: Layers, accent: '#D97706', float: { dx: 4, dy: 6, dur: 5.8, delay: 0.8 } },
+  fact_check: { label: 'Fact-Check', icon: BadgeCheck, accent: '#D97706', float: { dx: 5, dy: 4, dur: 6.1, delay: 0.4 } },
+  data_enrichment: { label: 'Enrichment', icon: Layers, accent: '#FBBF24', float: { dx: 4, dy: 6, dur: 5.8, delay: 0.8 } },
   summarize: { label: 'Summarizer', icon: Sparkles, accent: '#EA580C', float: { dx: 6, dy: 4, dur: 6.6, delay: 0.2 } },
   compile_report: { label: 'Report-Gen', icon: BookOpen, accent: '#F59E0B', float: { dx: 5, dy: 5, dur: 5.2, delay: 0.6 } },
 };
 
 const INFRA: Record<'wallet' | 'providers' | 'payment' | 'ledger', { label: string; icon: typeof Wallet; accent: string; float: Float }> = {
   wallet: { label: 'Wallet', icon: Wallet, accent: '#F5A623', float: { dx: 4, dy: 4, dur: 7.0, delay: 0.3 } },
-  providers: { label: 'Providers', icon: Server, accent: '#60A5FA', float: { dx: 5, dy: 4, dur: 6.8, delay: 0.9 } },
-  payment: { label: 'Payment', icon: Banknote, accent: '#34D399', float: { dx: 4, dy: 5, dur: 7.4, delay: 0.1 } },
-  ledger: { label: 'Ledger', icon: Database, accent: '#A78BFA', float: { dx: 5, dy: 5, dur: 6.4, delay: 0.5 } },
+  providers: { label: 'Providers', icon: Server, accent: '#FCD34D', float: { dx: 5, dy: 4, dur: 6.8, delay: 0.9 } },
+  payment: { label: 'Payment', icon: Banknote, accent: '#D97706', float: { dx: 4, dy: 5, dur: 7.4, delay: 0.1 } },
+  ledger: { label: 'Ledger', icon: Database, accent: '#EA580C', float: { dx: 5, dy: 5, dur: 6.4, delay: 0.5 } },
 };
 
 /* A fixed 520x520 coordinate space shared by the SVG edge/pulse layer and the
@@ -334,7 +338,7 @@ export const SettlementGraph = () => {
                   <motion.circle
                     key={lp.id}
                     r={reduced ? 0 : 3}
-                    fill="#A78BFA"
+                    fill="#F5A623"
                     initial={{ cx: from.x, cy: from.y, opacity: 0 }}
                     animate={{ cx: [from.x, via.x, to.x], cy: [from.y, via.y, to.y], opacity: reduced ? [0, 1, 0] : [0, 1, 1, 0] }}
                     transition={{ duration: reduced ? 0.35 : 0.95, ease: [0.4, 0, 0.2, 1], delay: 0.15 }}
@@ -460,9 +464,9 @@ export const SettlementGraph = () => {
                     }}
                     className="flex h-10 w-10 cursor-default items-center justify-center rounded-xl border"
                     style={{
-                      borderColor: lit ? meta.accent : 'var(--color-line)',
+                      borderColor: lit ? meta.accent : 'var(--graph-node-border-idle)',
                       background: lit ? `${meta.accent}1f` : 'var(--color-paper-2)',
-                      boxShadow: lit ? `0 0 22px -4px ${meta.accent}` : 'none',
+                      boxShadow: lit ? `0 0 22px -4px ${meta.accent}` : 'var(--graph-node-shadow-idle)',
                       transition: 'border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease',
                     }}
                   >
@@ -513,9 +517,9 @@ export const SettlementGraph = () => {
                     }}
                     className="flex h-9 w-9 cursor-default items-center justify-center rounded-full border"
                     style={{
-                      borderColor: lit ? meta.accent : 'var(--color-line)',
+                      borderColor: lit ? meta.accent : 'var(--graph-node-border-idle)',
                       background: lit ? `${meta.accent}1f` : 'var(--color-paper-2)',
-                      boxShadow: lit ? `0 0 18px -4px ${meta.accent}` : 'none',
+                      boxShadow: lit ? `0 0 18px -4px ${meta.accent}` : 'var(--graph-node-shadow-idle)',
                       transition: 'border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease',
                     }}
                   >

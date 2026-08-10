@@ -1,0 +1,22 @@
+/* Only the host element lives in the page's DOM - everything inside it is in a shadow
+   root with its own styles, so a page's own CSS can never reach the panel and the panel
+   can never leak into the page. These few rules are all the host needs. */
+#autoresearch-panel-host {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  width: 384px;
+  max-width: calc(100vw - 40px);
+  /* The page keeps its own font stack; the panel sets its own inside the shadow root. */
+  color-scheme: dark;
+}
+
+@media (max-width: 520px) {
+  #autoresearch-panel-host {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}

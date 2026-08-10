@@ -71,7 +71,11 @@ services/
   report-gen-cheap/main.py  POST /api/report                $0.003 (cheap/fast model), own process/port
 orchestrator/               planner.py, orchestrate.py (task graph exec, budget guard, failure
                             fallback, reverse auction), citations.py (cost-per-claim), job_store.py,
-                            main.py (the 3 API endpoints)
+                            main.py (the HTTP API), auth.py (caller identity)
+mcp_server/                 MCP server - exposes the orchestrator to Claude Desktop / Claude Code /
+                            Cursor as 5 tools. Thin adapter over the same HTTP API; see its README.
+extension/                  Chrome extension - right-click any sentence on any page to fact-check it
+                            for one x402 payment, or run the full pipeline on it. See its README.
 wallet/                     generate_wallet.py, check_balance.py
 frontend-react/             React + Vite multi-page site (marketing pages + the live console)
   src/site/                 nav, footer, pages, live-data components, theme toggle
@@ -83,6 +87,7 @@ scripts/
   test_e2e.py               headless end-to-end smoke test
   test_live_cost_meter.py   asserts total_spent_usdc is live + monotonic mid-job
   test_failover.py          kills report-gen (premium) mid-job, confirms clean fallback recovery
+  manage_keys.py            mint / list / revoke API keys and see today's spend per key
 run_all.sh                  starts orchestrator + all 8 services
 requirements.txt            single shared virtualenv for everything
 ```
@@ -119,10 +124,17 @@ Then edit `.env`:
      tier (planner, fact-check, enrichment, summarizer).
    - `GEMINI_API_KEY` from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) - powers the
      strong tier (final report synthesis only).
-   Each is independent: missing `GROQ_API_KEY` degrades only the cheap-tier calls to
-   heuristics, missing `GEMINI_API_KEY` degrades only report synthesis to a
-   deterministic template (see "What's real vs mocked" below) — the pipeline still
-   runs end-to-end either way.
+   Each is independent, and the pipeline runs end-to-end either way. Missing
+   `GROQ_API_KEY` degrades the cheap-tier calls to heuristics. Missing `GEMINI_API_KEY`
+   routes the strong tier through Groq instead — still a real synthesised report, just
+   not the stronger model. Only with *neither* key does report synthesis drop to a
+   deterministic template (see "What's real vs mocked" below).
+
+   Note on the model: keys created recently cannot call the `gemini-2.x` line at all
+   (it 404s with "no longer available to new users" despite still being listed), so the
+   default is `gemini-3.5-flash`. Thinking is disabled for that call — Gemini 3.x
+   otherwise leaks fragments of its own reasoning into the response, which silently
+   fails the report's required output format.
 3. **Optional**: `TAVILY_API_KEY` for real web search results (otherwise the Search
    API returns curated mock results).
 4. **Optional, for the provenance receipt**: a small amount of Base Sepolia
@@ -237,6 +249,18 @@ are additive only.
   - `trust_score`, `weak_claims_count`: aggregate of the self-critique pass, `null` if it didn't run
   - a provenance receipt (nullable if it couldn't be submitted): `report_hash` (SHA-256 of the canonical `{report_markdown, citations, payment_ledger}`), `provenance_tx_hash`, `provenance_explorer_url`
 - `GET /api/ledger` → raw payment ledger across all jobs (for the frontend/demoing)
+- `GET /api/quota` → this caller's remaining daily budget, per-job maximum and rate-limit
+  usage — so a client can check its headroom rather than discover it by being refused
+- `POST /api/fact-check` → `{claim, context?}` → one claim checked against a second source
+  for a single x402 settlement (~$0.003, a few seconds), returning the verdict plus its
+  `tx_hash`. Synchronous, unlike `/api/research`: it runs the one paid call directly rather
+  than planning a job, because the full pipeline is far too heavy for one sentence. This is
+  what the browser extension calls.
+
+Authentication is optional by default and required when `REQUIRE_API_KEY=true`; send the
+key as `Authorization: Bearer <key>` or `X-API-Key: <key>`. `POST /api/research` answers
+**402** with the specific limit that was hit when a caller is out of budget, having created
+no job and charged nothing. See "Spend limits and API keys" below.
 
 Full base JSON shapes are in [`docs/x402-research-agent-spec.md`](docs/x402-research-agent-spec.md) §7.
 
@@ -282,6 +306,95 @@ cheap, served by two independent processes); if the premium tier would blow the
 budget but the cheap tier wouldn't, the orchestrator downgrades that one task
 (`status: tier_downgraded` in the trace) instead of failing the job. If even the
 cheapest option would exceed the cap, the job stops as `budget_exceeded`.
+
+## Spend limits and API keys
+
+The budget guard above governs one job against the cap it was given. These limits govern
+who may ask for a job at all — because `budget_cap_usdc` arrives in the request, and a
+caller can ask for anything, repeatedly. Once the orchestrator is reachable by anyone
+(an MCP client, a public URL), the wallet is only as safe as this layer.
+
+Three independent ceilings, all checked before a job is created (`shared/api_keys.py`):
+
+- **per-job** — the largest `budget_cap_usdc` a single job may request
+- **per-caller** — rolling UTC-day spend for one API key, or for all anonymous callers pooled
+- **global** — rolling UTC-day spend across everything, the last line of defence on the wallet
+
+Spend is counted as *exposure*, not just settled payments: a running job's full budget
+counts against its caller until it finishes, so launching fifty jobs in the same second
+cannot slip past a cap that only looked at what had already been paid. When a job ends —
+completed, failed or crashed — its reservation is released and it counts at what it
+actually paid.
+
+A refusal is HTTP **402** naming the limit that was hit and what would still fit. Nothing
+is charged: the job is never created.
+
+```bash
+python scripts/manage_keys.py create "claude-desktop"   # printed once, only its hash is stored
+python scripts/manage_keys.py list                      # keys, today's spend, rate-limit usage
+python scripts/manage_keys.py revoke ar_sk_AbCdEfGh     # deactivate by prefix
+```
+
+Keys are optional by default: with `REQUIRE_API_KEY` unset, anonymous callers work and
+share one pooled quota, so the React frontend and the demo scripts need no changes. Set
+`REQUIRE_API_KEY=true` before exposing the orchestrator to the internet — anonymous jobs
+are then blocked entirely, and one key's jobs stop being readable with another's key. A
+*wrong* key is always rejected, key-required or not; silently downgrading it to anonymous
+would hand out anonymous's quota and hide the typo.
+
+`/api/ledger` stays public either way — every row in it is a settlement already public on
+BaseScan, and the site's live counters read it without a key.
+
+## Use it from Claude Desktop / Cursor (MCP)
+
+`mcp_server/` exposes the whole agent to any MCP client as five tools — `run_research`,
+`get_research_status`, `get_research_report`, `check_research_quota`, `get_payment_ledger`.
+
+```bash
+./run_all.sh                                        # orchestrator + 8 services
+python scripts/manage_keys.py create "claude-desktop"
+python -m mcp_server                                # stdio, for a local MCP client
+```
+
+It is a thin adapter with no wallet, no payment code and no research logic of its own —
+it calls the same HTTP API the web console calls, so there is exactly one implementation
+of a research job and one place where money is spent. x402, the auction and the failover
+stay invisible to the caller; the settlement proof does not, since every citation comes
+back carrying the transaction hash that paid for it.
+
+To serve many clients from one deployment instead of a local copy each:
+
+```bash
+python -m mcp_server --transport streamable-http --host 0.0.0.0 --port 8080
+```
+
+Clients then point at `https://your-host/mcp` and install nothing — no repo, no wallet,
+no LLM keys. Each sends its own API key per request, which the server forwards to the
+orchestrator, so quotas are per-user rather than pooled onto one shared key. `AUTORESEARCH_API_KEY`
+stays unset when hosting: it is the single-user fallback for stdio, where a request has
+no headers to carry a key.
+
+Client config for Claude Desktop and Claude Code is in [mcp_server/README.md](mcp_server/README.md).
+
+`mcp_server/` ships its own `Dockerfile` and `docker-compose.yml` and deploys
+independently of the rest of the repo — it only speaks HTTP to the orchestrator, so the
+image carries none of x402/web3/eth-account. See "Deploying with Docker" in
+[mcp_server/README.md](mcp_server/README.md) for the full flow, including the reverse
+proxy / TLS step a remote MCP client's config requires.
+
+## Fact-check anything you're reading (browser extension)
+
+`extension/` is a Chrome extension for the case the console can't cover: someone reading an
+article who wants one sentence verified without leaving the page.
+
+Select any text, right-click, **Fact-check with AutoResearch** — a panel appears over the
+page with a verdict, a confidence score, the corroborating source, and the BaseScan link
+for the payment that produced it. One x402 settlement, ~$0.003, a few seconds. A second
+menu item runs the full research pipeline on the selection instead.
+
+Chrome no longer permits loading unpacked extensions from the command line, so install it
+by hand: `chrome://extensions` → Developer mode → **Load unpacked** → pick `extension/`.
+Details and the hosted-backend caveat are in [extension/README.md](extension/README.md).
 
 ## Resilience / live failover
 

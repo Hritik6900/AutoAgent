@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span class="mark"></span>
+      <span class="title">AutoResearch</span>
+      <span class="spacer"></span>
+      <span class="status" id="status"><i class="dot"></i><span id="status-text">checking…</span></span>
+    </header>
+
+    <section class="quota" id="quota" hidden>
+      <div class="quota-head">
+        <span class="big" id="q-remaining">$0.0000</span>
+        <span class="sub" id="q-cap">left today</span>
+      </div>
+      <div class="bar"><i id="q-bar"></i></div>
+      <div class="quota-foot">
+        <span id="q-caller">—</span>
+        <span id="q-jobs">—</span>
+      </div>
+    </section>
+
+    <p class="err" id="error" hidden></p>
+
+    <section class="how">
+      <p class="hint">
+        Select any text on a page, right-click, and choose
+        <b>Fact-check with AutoResearch</b>. Each check is a real x402 payment and comes
+        back with its transaction hash.
+      </p>
+    </section>
+
+    <section class="settings">
+      <label for="apiUrl">Orchestrator URL</label>
+      <input id="apiUrl" type="text" spellcheck="false" placeholder="http://localhost:4000" />
+
+      <label for="apiKey">API key <span class="opt">(optional locally)</span></label>
+      <input id="apiKey" type="password" spellcheck="false" placeholder="ar_sk_…" />
+
+      <button id="save">Save</button>
+      <span class="saved" id="saved" hidden>Saved</span>
+    </section>
+
+    <footer>Base Sepolia testnet · no mainnet funds</footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

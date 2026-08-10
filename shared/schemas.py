@@ -7,6 +7,30 @@ class ResearchRequest(BaseModel):
     budget_cap_usdc: float
 
 
+class FactCheckRequest(BaseModel):
+    claim: str
+    # Where the claim was read - a page title/URL when it comes from the browser
+    # extension. Passed to the fact-check service as disambiguating context, never used
+    # for retrieval on its own.
+    context: Optional[str] = None
+
+
+class FactCheckResponse(BaseModel):
+    """One claim, one paid call, one settlement. Deliberately flat and synchronous: this
+    is what the browser extension shows in a popover, so a job id to poll would be worse
+    than simply waiting the few seconds the payment and the check actually take."""
+
+    claim: str
+    verdict: str
+    confidence: Optional[float] = None
+    explanation: Optional[str] = None
+    evidence_url: Optional[str] = None
+    method: Optional[str] = None
+    cost_usdc: float
+    tx_hash: Optional[str] = None
+    explorer_url: Optional[str] = None
+
+
 class ResearchAccepted(BaseModel):
     job_id: str
 

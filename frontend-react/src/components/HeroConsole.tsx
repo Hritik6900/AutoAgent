@@ -135,15 +135,22 @@ export const HeroConsole: React.FC = () => {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-10"
+          className="relative mt-10"
         >
+          {/* Sits directly behind the glass panel so the panel's blur/saturate actually
+              has coloured light to reveal - without this the composer just looks like a
+              dim solid box, since the arc's own dome doesn't reach this high. */}
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[220px] w-[110%] -translate-x-1/2 -translate-y-1/2 rounded-[40px] blur-[50px]"
+            style={{ background: 'radial-gradient(closest-side, var(--composer-glow), transparent 75%)' }}
+          />
           <form
             onSubmit={submit}
             onMouseEnter={() => setEngaged(true)}
             onMouseLeave={() => setEngaged(false)}
             onFocus={() => setEngaged(true)}
             onBlur={() => setEngaged(false)}
-            className="arc-input rounded-[20px] border border-[var(--color-line)] p-2 backdrop-blur-xl"
+            className="arc-input rounded-[20px] border border-[var(--color-line)] p-2"
             style={{ background: 'var(--composer-bg)' }}
           >
             <div className="relative">

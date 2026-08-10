@@ -14,7 +14,7 @@ _CONFIDENCE_WEIGHTS = {"strong": 1.0, "moderate": 0.6, "weak": 0.2}
 
 
 async def critique_citations(query: str, citations: list[dict]) -> list[dict]:
-    if not citations or not has_llm("cheap"):
+    if not citations or not has_llm("aux"):
         return citations
 
     items_text = "\n".join(
@@ -24,7 +24,10 @@ async def critique_citations(query: str, citations: list[dict]) -> list[dict]:
 
     try:
         result = await call_llm(
-            tier="cheap",
+            # Orchestrator-side review, not paid-service work - kept off Groq so its
+            # citation-sized prompt can't starve the microservices. See llm.py.
+            tier="aux",
+            reasoning_effort="none",
             system=(
                 "You are a rigorous fact-checking critic reviewing a research report's citations before "
                 "publication. For EACH citation, judge how well-supported it looks from what's given (a "

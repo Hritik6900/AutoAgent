@@ -56,5 +56,12 @@ export const LaunchDeck: React.FC<{ active?: boolean }> = ({ active = false }) =
         opacity: active ? 1 : 0.82,
       }}
     />
+
+    {/* Layer 3: a near-invisible vignette toward the screen edges - the thing that makes
+        architectural lighting read as physical instead of a shape pasted on a flat page. */}
+    <div
+      className="absolute inset-0"
+      style={{ background: 'radial-gradient(120% 100% at 50% 30%, transparent 55%, var(--console-vignette) 100%)' }}
+    />
   </div>
 );
