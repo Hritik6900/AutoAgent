@@ -25,6 +25,7 @@ import { LiveDot } from './components/primitives';
 import { Logo } from './components/Logo';
 import { ThemeToggle } from './components/ThemeToggle';
 import { UserMenu } from './components/UserMenu';
+import { WalletPill } from './components/WalletPill';
 import { useNetworkStats } from './hooks/useNetworkStats';
 
 type MenuItem = {
@@ -224,6 +225,7 @@ export const Nav = () => {
                 {online === true ? 'Agent online' : online === false ? 'Agent offline' : 'Connecting'}
               </span>
             </span>
+            <WalletPill className="hidden sm:inline-flex" />
             <ThemeToggle />
             <UserMenu />
             <Link

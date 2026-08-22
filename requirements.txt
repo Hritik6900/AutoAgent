@@ -22,3 +22,8 @@ requests>=2.32.0
 # Cursor and any other MCP client. Only needed to run `python -m mcp_server`; the
 # orchestrator and the microservices do not import it.
 mcp[cli]>=2.0.0
+
+# Algorand TestNet (shared/algorand.py) - the demo faucet that funds each new user's
+# browser-held wallet, plus read-only chain queries. The users' own keys are generated
+# and used in the browser by algosdk (frontend-react), never here.
+py-algorand-sdk>=2.6.0

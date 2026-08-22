@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Loader2, Lock, Mail, User as UserIcon } from 'lucide-react';
 import { useAuth, authErrorMessage } from '../../context/AuthContext';
@@ -16,19 +16,25 @@ const GoogleMark = () => (
   </svg>
 );
 
-/* Sign-in is optional on this site, so the page has to justify itself rather than just
-   demand credentials. These are the three things an account actually buys. */
+/* Signing in is now required to reach the console, so the page should say what it hands
+   over rather than only what it withholds. The wallet leads: it is the one thing that
+   happens *for* you the moment you arrive. */
 const PERKS = [
+  'An Algorand testnet wallet, created and funded for you on arrival',
   'Your finished reports are saved — the orchestrator forgets them on restart',
-  'Fact-check history from the browser extension, in one place',
   'Your budget, default provider tier and API key prefix travel with you',
 ];
 
 export const SignIn = () => {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } = useAuth();
+  const { user, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } =
+    useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = (location.state as { from?: string } | null)?.from || '/account';
+  /* Straight to the console once signed in. `from` is set by RequireAuth when someone was
+     bounced off a gated route, so being sent here from /console returns them to /console;
+     signing in directly from the nav lands there too, since running the agent is the
+     reason to have an account at all. */
+  const redirectTo = (location.state as { from?: string } | null)?.from || '/console';
 
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
@@ -59,6 +65,14 @@ export const SignIn = () => {
       setBusy(null);
     }
   };
+
+  /* Someone already signed in has no business on this page - they land here by using the
+     back button after signing in, or by following a stale link. Send them where they were
+     going instead of showing a login form to a logged-in user. Guarded on `loading` so a
+     hard refresh doesn't redirect during the moment before auth resolves. */
+  if (!loading && user) {
+    return <Navigate to={redirectTo} replace />;
+  }
 
   const google = async () => {
     setError(null);
@@ -97,13 +111,13 @@ export const SignIn = () => {
           >
             <div className="eyebrow">Account</div>
             <h1 className="mt-4 font-display text-[38px] font-extrabold leading-[1.08] tracking-[-0.03em]">
-              Keep what the
+              Put the agent
               <br />
-              agent finds.
+              to work.
             </h1>
             <p className="lede mt-5 max-w-[420px] text-[16px]">
-              The console works without an account — signing in is for keeping the work
-              afterwards.
+              Signing in opens the console, and sets you up with a testnet wallet of your
+              own — no faucet, no browser extension, nothing to install.
             </p>
             <ul className="mt-8 space-y-3">
               {PERKS.map((p) => (
@@ -273,13 +287,15 @@ export const SignIn = () => {
               </div>
             </div>
 
+            {/* No "continue without an account" escape hatch: /console is gated now, so
+                that link would bounce straight back here. */}
             <p className={cn('mt-4 text-center text-[12px] text-[var(--color-ink-4)]')}>
-              Prefer not to sign in?{' '}
+              Just looking?{' '}
               <Link
-                to="/console"
+                to="/how-it-works"
                 className="font-semibold text-[var(--color-ink-3)] underline decoration-[var(--color-line-2)] underline-offset-4 transition-colors hover:text-[var(--color-ink)]"
               >
-                The console works without an account
+                See how it works first
               </Link>
             </p>
           </motion.div>

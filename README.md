@@ -35,7 +35,16 @@ Citation Compiler → cited Markdown report, cost-per-claim breakdown, payment l
    │
    ▼
 Provenance receipt → SHA-256(report) anchored in one small Base Sepolia tx
+   │
+   ▼
+Algorand anchor → the same hash, signed by the *reader's* own browser-held key
 ```
+
+Two chains, carrying two different claims. **Base Sepolia** settles what the agent
+spends (x402/USDC, signed by the deployment's wallet) and carries the orchestrator's own
+provenance receipt. **Algorand** carries the reader: a self-custody account generated in
+their browser, auto-funded on first visit, which signs an independent integrity anchor
+over the finished report. See "Per-user Algorand wallet" below.
 
 Full spec: [`docs/x402-research-agent-spec.md`](docs/x402-research-agent-spec.md).
 
@@ -48,6 +57,9 @@ Full spec: [`docs/x402-research-agent-spec.md`](docs/x402-research-agent-spec.md
   `x402HttpxClient`) rather than the newer 2.x API (CAIP-2 network ids + resource-server
   scheme registration) — same protocol, far less boilerplate for this project.
 - **`eth-account` / `web3.py`** for the Base Sepolia wallet
+- **`algosdk`** (`py-algorand-sdk` server-side, `algosdk` in the browser) for the
+  Algorand TestNet layer — the per-user self-custody wallet and the report anchor. Talks
+  to AlgoNode's public endpoints, which need no key or signup.
 - **SQLite** (plain `sqlite3`, no ORM) for the payment ledger — `data/ledger.db`
 - **Groq** (cheap/fast tier: planner, fact-check, enrichment, summarizer) and
   **Gemini** (strong tier: final report synthesis only) for LLM calls - both free,
@@ -59,7 +71,7 @@ Full spec: [`docs/x402-research-agent-spec.md`](docs/x402-research-agent-spec.md
 ```
 shared/                     config, pydantic schemas, wallet, SQLite ledger, x402 client, LLM
                             wrapper, mock search data, report synthesis logic, search logic,
-                            provenance receipts
+                            provenance receipts, algorand.py (demo faucet + chain reads)
 services/
   search/main.py            POST /api/search, GET /quote  ~$0.0015-0.0045 (randomized at startup)
   search-b/main.py          POST /api/search, GET /quote  ~$0.0015-0.0045 - auction competitor
@@ -76,7 +88,8 @@ mcp_server/                 MCP server - exposes the orchestrator to Claude Desk
                             Cursor as 5 tools. Thin adapter over the same HTTP API; see its README.
 extension/                  Chrome extension - right-click any sentence on any page to fact-check it
                             for one x402 payment, or run the full pipeline on it. See its README.
-wallet/                     generate_wallet.py, check_balance.py
+wallet/                     generate_wallet.py, check_balance.py,
+                            generate_algorand_wallet.py (the demo faucet account)
 frontend-react/             React + Vite multi-page site (marketing pages + the live console)
   src/site/                 nav, footer, pages, live-data components, theme toggle
   src/pages/ConsolePage.tsx the working console, lazily loaded as its own chunk
@@ -87,6 +100,8 @@ scripts/
   test_e2e.py               headless end-to-end smoke test
   test_live_cost_meter.py   asserts total_spent_usdc is live + monotonic mid-job
   test_failover.py          kills report-gen (premium) mid-job, confirms clean fallback recovery
+  test_wallet_ui.py         real Chrome: wallet auto-creates + auto-funds, phrase stays hidden
+  test_anchor_ui.py         real Chrome: run a report, anchor it on Algorand, verify on-chain
   manage_keys.py            mint / list / revoke API keys and see today's spend per key
 run_all.sh                  starts orchestrator + all 8 services
 requirements.txt            single shared virtualenv for everything
@@ -191,6 +206,7 @@ npm run dev          # http://localhost:5173
 | `/features` | Deep dive on each capability (payments, auction, narration, failover, cost attribution, self-critique, provenance) |
 | `/developers` | Quickstart in Python / JavaScript / cURL, API reference, real response shapes |
 | `/about` | Architecture, stack, and an honest "what's real vs what degrades" table |
+| `/wallet` | The visitor's own Algorand TestNet account — balance, address, recovery phrase, live on-chain activity |
 | `/console` | **The working tool** — submit a query + budget and watch it run live |
 
 Every figure on the marketing pages (total USDC settled, transaction count, job
@@ -293,6 +309,9 @@ See `orchestrator/citations.py` for the implementation.
 | On-chain payment settlement | Real Base Sepolia tx, once the buyer wallet holds testnet USDC | Payment correctly signs + verifies, then fails at settle with `invalid_exact_evm_insufficient_balance` until funded |
 | On-chain provenance receipt | Real Base Sepolia tx (needs testnet ETH for gas, separate from the USDC payments) | Skipped gracefully; `report_hash`/`provenance_tx_hash` are `null`, job still completes |
 | Reputation weighting in the search auction | Always real — success rate computed live from the SQLite ledger's actual payment history for each provider | Defaults to 1.0 (pure cheapest-first) when a provider has no history yet |
+| Per-user Algorand wallet | Always real — generated in-browser by algosdk, real TestNet account, key never sent anywhere | — |
+| Auto-funding a new wallet | Real Algorand TestNet payment from the demo faucet | Wallet is created unfunded; UI links the public dispenser |
+| Algorand report anchor | Real TestNet transaction, signed in the browser by the user's own key | Button disabled until the wallet has its 0.001 ALGO fee |
 | Live AI reasoning stream (`narration`) | LLM call (cheap tier) per decision point | Deterministic templated sentence, still populated |
 | Self-critique / trust score | LLM call (cheap tier), independent of report synthesis | Citations returned unreviewed; `trust_score`/`weak_claims_count` are `null`, never a fabricated value |
 
@@ -500,6 +519,92 @@ best-effort: if the wallet has no testnet ETH, this step fails and is logged, bu
 the job still completes normally with `report_hash`/`provenance_tx_hash` left
 `null` - a demo without ETH funding loses only this one bonus field, nothing else.
 
+## Per-user Algorand wallet
+
+Everything above this point is spent by *one* wallet: the orchestrator's, on Base Sepolia,
+paying microservices on the user's behalf. That leaves the user with no identity of their
+own and nothing they can prove independently. This is the other half.
+
+**On first visit, a wallet appears and funds itself.** `algosdk` generates an Algorand
+TestNet account in the browser, the orchestrator's demo faucet sends it 0.5 TestNet ALGO,
+and the nav pill goes `Creating… → Funding… → 0.50 ALGO`. No dispenser, no captcha, no
+sign-in — a visitor is ready to transact before they have clicked anything.
+
+**The key never leaves the browser.** It is generated by `frontend-react/src/lib/algorand.ts`,
+kept in `localStorage`, and used there to sign. The orchestrator has no user key, cannot
+sign for anyone, and stores only the public address (on the Firestore profile, best-effort).
+`/wallet` says plainly that clearing site data destroys the account, because it does.
+
+**Signing in is an upgrade, never a requirement.** Signed out, the wallet is scoped to the
+browser; signing in re-keys it to the account and carries the existing one over rather than
+replacing it (`adoptWallet`), so ALGO already funded isn't stranded. This is deliberate: a
+Firebase project that is misconfigured, rate-limited or simply not set up cannot take the
+Algorand demo down with it.
+
+### Anchoring a report
+
+A finished report shows both proofs side by side (`DualChainProof`):
+
+| | Base Sepolia | Algorand |
+|---|---|---|
+| Signed by | the orchestrator's wallet | the reader's own key |
+| Claims | this service published this text | *I* held this exact report, at this time |
+| Needs | TestNet ETH for gas | 0.001 ALGO, from the reader's wallet |
+| Written | automatically, when the report compiles | on demand, when the reader clicks |
+
+Clicking **Anchor on Algorand** builds a zero-amount payment from the wallet to itself
+carrying `autoresearch:v1:<sha256>` in the note field, signs it in the browser, and waits
+for confirmation (~3s). **Re-read from chain** then calls `POST /api/algorand/verify-anchor`,
+which fetches the transaction back, decodes the note and compares it — a mismatch is shown
+as a mismatch, with both hashes, rather than swallowed.
+
+The hash anchored is the orchestrator's own `report_hash` (SHA-256 over the canonical
+`{report_markdown, citations, payment_ledger}`) when it exists. When the Base receipt was
+skipped for lack of gas there is no canonical hash, so the panel falls back to hashing the
+report text and relabels itself to say so, rather than quietly narrowing what the proof covers.
+
+### Setup
+
+```bash
+python wallet/generate_algorand_wallet.py     # creates the demo faucet, writes it to .env
+```
+
+Then fund the printed address at [lora.algokit.io/testnet/fund](https://lora.algokit.io/testnet/fund)
+(it requires a sign-in — this is exactly the friction the faucet exists to keep out of the
+demo). 10 ALGO serves ~20 users at 0.5 each. Check it with:
+
+```bash
+curl -s localhost:4000/api/algorand/status
+```
+
+Leave `ALGORAND_FAUCET_MNEMONIC` unset and everything still works — new wallets are created
+unfunded and the UI links users to the public dispenser instead.
+
+### API
+
+- `GET /api/algorand/status` → whether a faucet is configured, its address and balance
+- `GET /api/algorand/account/{address}` → balance and explorer link for any address
+- `POST /api/algorand/fund` → `{address}` → tops up a new wallet. Returns `funded: false`
+  with a reason (`already_funded` / `cooldown`) when no transfer was needed — both are
+  success states. Guarded by a balance threshold and a per-address cooldown, so a refresh
+  loop cannot drain the faucet.
+- `POST /api/algorand/verify-anchor` → `{tx_id, report_hash}` → re-reads the note off-chain
+  and reports whether it matches
+
+All four are unauthenticated, for the same reason `/api/ledger` is: they read data that is
+already public on-chain, and the faucet spends valueless TestNet ALGO.
+
+### Testing it
+
+```bash
+python scripts/test_wallet_ui.py     # wallet auto-creates, auto-funds, phrase stays hidden
+python scripts/test_anchor_ui.py     # full path: run a report -> anchor it -> verify on-chain
+```
+
+Both drive a real Chrome (Playwright, `channel="chrome"`) against `npm run dev` on :5173 and
+the full stack on :4000. `test_anchor_ui.py` is the judge's path end to end and pays six real
+x402 calls on the way through, so it takes a couple of minutes.
+
 ## Troubleshooting
 
 - **`invalid_exact_evm_insufficient_balance`** — buyer wallet has no testnet USDC yet. Fund it (see Setup) and re-run.
@@ -507,3 +612,8 @@ the job still completes normally with `report_hash`/`provenance_tx_hash` left
 - **`BUYER_PRIVATE_KEY is missing or malformed`** — run `python wallet/generate_wallet.py`.
 - **Port already in use** — another `run_all.sh` is still running; `pkill -f uvicorn` / `pkill -f "services/"` or change the `PORT_*` vars in `.env`.
 - **LLM calls failing** — every service catches LLM errors and falls back to its heuristic automatically; check the service's stdout log for the underlying error (bad key, rate limit, etc).
+- **Everything suddenly looks templated** (planner uses the default topology, fact-checks read like regex, narration is one flat sentence, `trust_score` is `null`) — the cheap tier is failing and every caller is silently falling back. Two causes seen in practice:
+  - **The Groq model was retired.** `llama-3.3-70b-versatile` now 404s as "does not exist or you do not have access to it". List what your key can actually call: `curl -sH "Authorization: Bearer $GROQ_API_KEY" https://api.groq.com/openai/v1/models` and set `LLM_MODEL_CHEAP_GROQ` to one of them.
+  - **JSON mode with no thinking budget.** Groq's `gpt-oss` models fail structured calls with "Failed to generate JSON" about half the time unless `reasoning_effort` is set, while Gemini needs `"none"` or it can spend the entire budget reasoning and return no content at all. `shared/llm.py::_effort_for` reconciles the two; if you add a provider, it needs a case there.
+- **`The demo faucet is out of TestNet ALGO`** — top it up at [lora.algokit.io/testnet/fund](https://lora.algokit.io/testnet/fund); the address is in `curl -s localhost:4000/api/algorand/status`. Users can still fund their own wallets from the same dispenser in the meantime.
+- **A user's wallet vanished** — it lives in that browser's `localStorage` and nowhere else. Clearing site data, a different browser, or a private window all mean a new account. This is the cost of the server holding no user keys, and `/wallet` says so.

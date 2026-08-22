@@ -1,4 +1,42 @@
-export const API_BASE_URL = localStorage.getItem('API_BASE_URL') || 'http://localhost:4000';
+/**
+ * Where the orchestrator lives, in precedence order:
+ *
+ *   1. `localStorage.API_BASE_URL` — set from the console at runtime. Highest priority so
+ *      a deployed build can be pointed at a different backend without rebuilding, which
+ *      is what makes one deployment demo-able against whatever machine is running the
+ *      stack that day.
+ *   2. `VITE_API_BASE_URL` — baked in at build time from `.env` / the host's env vars.
+ *      This is what a real deployment sets.
+ *   3. `http://localhost:4000` — the local-dev default.
+ *
+ * The fallback is deliberately a *last* resort: a deployed page that quietly falls back
+ * to localhost sends every request to the visitor's own machine, where nothing is
+ * listening, and the whole site reads as broken with no clue why. `apiTarget()` below
+ * exists so the UI can say which of these three is in play.
+ */
+const STORED_BASE = (() => {
+  try {
+    return localStorage.getItem('API_BASE_URL');
+  } catch {
+    return null; // storage blocked (private mode, embedded webview)
+  }
+})();
+
+const BUILT_IN_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+
+export const API_BASE_URL = (STORED_BASE || BUILT_IN_BASE || 'http://localhost:4000').replace(
+  /\/+$/,
+  '',
+);
+
+/** Which source won, and whether this looks like a misconfigured deployment - a page
+ *  served over https that is about to call http://localhost. */
+export function apiTarget() {
+  const source = STORED_BASE ? 'localStorage' : BUILT_IN_BASE ? 'build' : 'default';
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(API_BASE_URL);
+  const pageIsHttps = typeof location !== 'undefined' && location.protocol === 'https:';
+  return { url: API_BASE_URL, source, isLocal, pageIsHttps, mismatched: pageIsHttps && isLocal };
+}
 
 export interface ResearchRequest {
   query: string;

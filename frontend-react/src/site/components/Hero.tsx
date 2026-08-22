@@ -91,7 +91,7 @@ export const Hero = () => (
         </div>
 
         <p className="mt-8 text-[12.5px] text-[var(--color-ink-4)]">
-          Testnet USDC only · No wallet or signup required · Every payment verifiable on BaseScan
+          Testnet USDC only · Wallet created for you on sign-in · Every payment verifiable on BaseScan
         </p>
 
         <OrchestrationStrip />

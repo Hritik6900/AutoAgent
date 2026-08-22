@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpRight, ChevronDown, FileDown, FileText, Printer, ShieldCheck, Stamp } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, FileDown, FileText, Printer, ShieldCheck } from 'lucide-react';
 import type { Citation, ReportResponse } from '../api/client';
 import { useAgent } from '../context/AgentContext';
+import { DualChainProof } from '../site/components/DualChainProof';
 import { cn } from '../utils/cn';
 
 function slugify(text: string): string {
@@ -230,25 +231,11 @@ export const FinalReport = () => {
           </div>
         </motion.div>
 
-        {/* ---- provenance ---- */}
-        {report.provenance_tx_hash && (
-          <a
-            href={report.provenance_explorer_url ?? '#'}
-            target="_blank"
-            rel="noreferrer"
-            className="group mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tone-brand-border)] bg-[var(--tone-brand-bg)] px-5 py-4"
-          >
-            <Stamp className="h-4 w-4 shrink-0 text-[var(--tone-brand-text)]" />
-            <span className="text-[13.5px] font-semibold text-[var(--tone-brand-text-strong)]">
-              This exact report is hashed on-chain
-            </span>
-            <span className="mono truncate text-[11.5px] text-[var(--tone-brand-text)]/70">{report.report_hash?.slice(0, 28)}…</span>
-            <span className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--tone-brand-text)]">
-              Verify
-              <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </span>
-          </a>
-        )}
+        {/* ---- provenance ----
+             Both receipts, side by side: the orchestrator's Base Sepolia one (which may
+             be absent - it needs gas) and the reader's own Algorand anchor, which they
+             sign here with a key only their browser holds. */}
+        <DualChainProof report={report} />
 
         {/* ---- body ---- */}
         <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">

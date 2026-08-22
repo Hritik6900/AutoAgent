@@ -124,3 +124,51 @@ class ReportResponse(BaseModel):
     # didn't run (no LLM key) rather than a misleading default.
     trust_score: Optional[float] = None
     weak_claims_count: Optional[int] = None
+
+
+# --- Algorand TestNet (per-user wallet + report anchoring) -------------------
+# Distinct from the x402/Base-Sepolia payment path above: these describe the user's
+# own self-custody Algorand account, which the browser generates and signs with.
+# The server never sees a user key - it only reads public chain state and, if a demo
+# faucet is configured, sends that account its first TestNet ALGO.
+
+
+class AlgorandFundRequest(BaseModel):
+    address: str
+
+
+class AlgorandAccount(BaseModel):
+    address: str
+    balance_algo: float
+    balance_micro: int
+    funded: bool
+    network: str
+    explorer_url: str
+
+
+class AlgorandFundResponse(BaseModel):
+    funded: bool
+    # "already_funded" / "cooldown" when no transfer was needed. None on a real transfer.
+    reason: Optional[str] = None
+    amount_algo: Optional[float] = None
+    balance_algo: float
+    tx_id: Optional[str] = None
+    explorer_url: Optional[str] = None
+
+
+class AlgorandVerifyRequest(BaseModel):
+    tx_id: str
+    report_hash: str
+
+
+class AlgorandVerifyResponse(BaseModel):
+    """Independent confirmation that an anchor transaction really carries this report's
+    hash - the check a judge would otherwise do by hand on the explorer."""
+    verified: bool
+    tx_id: str
+    confirmed_round: Optional[int] = None
+    on_chain_hash: Optional[str] = None
+    expected_hash: str
+    sender: Optional[str] = None
+    explorer_url: Optional[str] = None
+    detail: Optional[str] = None

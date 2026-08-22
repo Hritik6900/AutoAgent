@@ -103,8 +103,25 @@ async def _call_openai_compatible(
 
     if res.status_code >= 400:
         raise RuntimeError(f"LLM API error {res.status_code} ({base_url}): {res.text[:500]}")
+
     data = res.json()
-    return data["choices"][0]["message"]["content"]
+    choice = (data.get("choices") or [{}])[0]
+    content = (choice.get("message") or {}).get("content")
+
+    if not content:
+        # A 200 with no content at all. Gemini's thinking models do this when the whole
+        # token budget goes to reasoning and none is left to answer with
+        # (finish_reason "length", completion_tokens 0) - which is why every strong-tier
+        # caller here passes reasoning_effort="none". Callers already fall back to their
+        # heuristic on any exception; this exists so the log says which of those two
+        # things happened instead of a bare KeyError: 'content'.
+        raise RuntimeError(
+            f"LLM returned no content (finish_reason={choice.get('finish_reason')!r}, "
+            f"usage={data.get('usage')}). If finish_reason is 'length' with zero completion "
+            f"tokens, the model spent the budget on reasoning - raise max_tokens or pass "
+            f"reasoning_effort='none'."
+        )
+    return content
 
 
 def extract_json(text: str):
@@ -125,6 +142,32 @@ def extract_json(text: str):
     raise ValueError(f"Could not parse JSON from LLM output: {text[:200]}")
 
 
+def _effort_for(provider: str, requested: str | None, json_mode: bool) -> str | None:
+    """Reconcile one `reasoning_effort` request with what each provider actually accepts.
+
+    The two providers need opposite handling, both learned the hard way:
+
+    * **Gemini** accepts "none" and needs it. Left to think freely it can spend the entire
+      token budget reasoning and return a 200 with no content at all (finish_reason
+      "length", completion_tokens 0), which is what `_call_openai_compatible` now reports
+      explicitly.
+
+    * **Groq** rejects "none" outright ("must be one of `low`, `medium`, `high`") and its
+      gpt-oss models need *some* thinking to reliably close a JSON object: without it,
+      structured calls fail with "Failed to generate JSON" roughly half the time, and the
+      caller silently drops to its heuristic. So "none" is floored to "low" there, and any
+      JSON-mode call gets "low" by default even when the caller asked for nothing.
+
+    Getting this wrong is invisible in normal use - every caller catches the failure and
+    falls back - so it shows up as the whole pipeline quietly looking templated.
+    """
+    if provider == "gemini":
+        return requested
+    if requested in (None, "none"):
+        return "low" if (json_mode or requested == "none") else None
+    return requested
+
+
 async def call_llm(
     *,
     tier: str,
@@ -135,11 +178,15 @@ async def call_llm(
     timeout: float = 60,
     reasoning_effort: str | None = None,
 ):
-    """`reasoning_effort` ("none" / "low" / …) applies to Gemini's thinking models and is
-    ignored by Groq, which has no such parameter. Worth setting to "none" for calls whose
-    output must match a strict format: with thinking on, Gemini 3.x intermittently emits
-    part of its own reasoning into the content field ("wait, the brackets are …"), which
-    silently fails any parser expecting the requested shape."""
+    """`reasoning_effort` ("none" / "low" / …) controls how much a reasoning model thinks
+    before answering. Both providers now expose it, but they disagree about the vocabulary
+    and about what the safe setting is, so this function normalises rather than passing it
+    through - see `_effort_for` below.
+
+    Worth setting on any call whose output must match a strict format: with thinking left
+    unconstrained, Gemini 3.x intermittently emits part of its own reasoning into the
+    content field ("wait, the brackets are …"), which silently fails any parser expecting
+    the requested shape."""
     provider = _provider_for(tier)
     model = _model_for(tier)
     sys_prompt = (
@@ -156,7 +203,7 @@ async def call_llm(
     text = await _call_openai_compatible(
         base_url=base_url, api_key=api_key, model=model, system=sys_prompt, user=user,
         max_tokens=max_tokens, json_mode=json_mode, timeout=timeout,
-        reasoning_effort=reasoning_effort if provider == "gemini" else None,
+        reasoning_effort=_effort_for(provider, reasoning_effort, json_mode),
     )
 
     if json_mode:

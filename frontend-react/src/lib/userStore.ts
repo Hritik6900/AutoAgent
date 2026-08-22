@@ -71,6 +71,21 @@ export interface UserAutoResearch {
   extensionInstalled: boolean;
 }
 
+/** The user's own Algorand TestNet account.
+ *
+ *  Only the public address is ever stored. The key that controls it is generated in the
+ *  browser and stays in localStorage (see `lib/algorand.ts`) - writing it here would hand
+ *  custody to whoever can read the database, which is exactly what the non-custodial
+ *  design exists to avoid. This record is a convenience so the address is recognisable
+ *  across sessions, not a backup: clearing site data loses the account. */
+export interface UserWallet {
+  algorandAddress: string;
+  network: string;
+  /** Whether the demo faucet has topped this account up at least once. */
+  funded: boolean;
+  linkedAt: Timestamp | null;
+}
+
 export interface UserUsage {
   jobCount: number;
   factCheckCount: number;
@@ -99,6 +114,9 @@ export interface UserDoc {
   profile: UserProfile;
   preferences: UserPreferences;
   autoresearch: UserAutoResearch;
+  /** Optional: absent on documents created before wallets existed, so every read of this
+   *  field has to tolerate undefined rather than assume the shape. */
+  wallet?: UserWallet;
   usage: UserUsage;
   plan: UserPlan;
 }
@@ -306,6 +324,26 @@ export async function updateAutoResearch(uid: string, patch: Partial<UserAutoRes
   const flat: Record<string, unknown> = { updatedAt: serverTimestamp() };
   for (const [k, v] of Object.entries(patch)) flat[`autoresearch.${k}`] = v;
   await updateDoc(userRef(uid), flat);
+}
+
+/** Record the *public* address of the user's browser-held Algorand account.
+ *
+ *  Never called with a key or mnemonic - see UserWallet. Callers treat a rejection here
+ *  as cosmetic: the wallet lives in localStorage and works whether or not this write
+ *  lands, so a locked-down or undeployed Firestore must not break signing.
+ */
+export async function linkWallet(uid: string, wallet: {
+  algorandAddress: string;
+  network: string;
+  funded: boolean;
+}): Promise<void> {
+  await updateDoc(userRef(uid), {
+    'wallet.algorandAddress': wallet.algorandAddress,
+    'wallet.network': wallet.network,
+    'wallet.funded': wallet.funded,
+    'wallet.linkedAt': serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function markOnboarded(uid: string): Promise<void> {

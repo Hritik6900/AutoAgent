@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Receipt, Settings, Sparkles } from 'lucide-react';
+import { LogOut, Receipt, Settings, Sparkles, Wallet } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useWallet } from '../../context/WalletContext';
 
 /** Avatar + dropdown when signed in; a plain "Sign in" link when not.
  *  Renders nothing at all while auth is still resolving, so the nav never flickers
  *  "Sign in" at someone who is already signed in. */
 export const UserMenu = () => {
   const { user, profile, loading, signOut } = useAuth();
+  const { balanceAlgo, phase: walletPhase } = useWallet();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +85,28 @@ export const UserMenu = () => {
               </span>
             </div>
 
+            {/* The Algorand balance sits next to the USDC figure above on purpose: the two
+                numbers are the user's two relationships to the system - what the agent has
+                spent on their behalf, and what they hold to sign with themselves. */}
+            <div className="flex items-center justify-between border-t border-[var(--color-line)] px-4 py-2.5">
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--color-ink-3)]">
+                <Wallet className="h-3.5 w-3.5" />
+                Algorand
+              </span>
+              <span className="mono text-[11.5px] text-[var(--color-ink-2)]">
+                {walletPhase === 'ready' ? `${balanceAlgo.toFixed(3)} ALGO` : 'preparing…'}
+              </span>
+            </div>
+
             <div className="border-t border-[var(--color-line)] p-1.5">
+              <Link
+                to="/wallet"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13.5px] font-medium text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-3)] hover:text-[var(--color-ink)]"
+              >
+                <Wallet className="h-3.5 w-3.5" />
+                Wallet
+              </Link>
               <Link
                 to="/account"
                 onClick={() => setOpen(false)}
